@@ -20,6 +20,7 @@ export interface Message {
 }
 
 export interface ChatOptions {
+  model?: string; // Model to use for this chat
   temperature?: number;
   maxTokens?: number;
   tools?: any[];
