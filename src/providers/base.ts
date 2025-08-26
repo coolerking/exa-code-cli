@@ -6,8 +6,10 @@ export interface ModelInfo {
 
 export interface ProviderConfig {
   apiKey: string;
-  endpoint?: string; // For Azure OpenAI
-  model?: string;
+  endpoint?: string; // For Azure OpenAI endpoint URL
+  deploymentName?: string; // For Azure OpenAI - the deployment name you created (may differ from model name)
+  apiVersion?: string; // For Azure OpenAI API version (e.g., "2024-10-21")
+  model?: string; // Model identifier used by the provider
 }
 
 export interface Message {

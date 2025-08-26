@@ -6,6 +6,8 @@ import { ProviderType } from '../providers/factory.js';
 interface ProviderConfig {
   apiKey?: string;
   endpoint?: string; // For Azure OpenAI
+  deploymentName?: string; // For Azure OpenAI deployment name
+  apiVersion?: string; // For Azure OpenAI API version
   defaultModel?: string;
 }
 
@@ -228,23 +230,87 @@ export class ConfigManager {
     }
   }
 
-  private getEnvVarForProvider(provider: ProviderType, field: 'apiKey' | 'endpoint'): string | null {
+  public getProviderDeploymentName(provider: ProviderType): string | null {
+    // Check environment variables first
+    const envDeployment = this.getEnvVarForProvider(provider, 'deploymentName');
+    if (envDeployment) {
+      return envDeployment;
+    }
+
+    // Then check config file
+    const providerConfig = this.getProviderConfig(provider);
+    return providerConfig?.deploymentName || null;
+  }
+
+  public setProviderDeploymentName(provider: ProviderType, deploymentName: string): void {
+    try {
+      const config = this.readConfig();
+      if (!config.providers) {
+        config.providers = {};
+      }
+      if (!config.providers[provider]) {
+        config.providers[provider] = {};
+      }
+      config.providers[provider]!.deploymentName = deploymentName;
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to save ${provider} deployment name: ${error}`);
+    }
+  }
+
+  public getProviderApiVersion(provider: ProviderType): string | null {
+    // Check environment variables first
+    const envVersion = this.getEnvVarForProvider(provider, 'apiVersion');
+    if (envVersion) {
+      return envVersion;
+    }
+
+    // Then check config file
+    const providerConfig = this.getProviderConfig(provider);
+    return providerConfig?.apiVersion || null;
+  }
+
+  public setProviderApiVersion(provider: ProviderType, apiVersion: string): void {
+    try {
+      const config = this.readConfig();
+      if (!config.providers) {
+        config.providers = {};
+      }
+      if (!config.providers[provider]) {
+        config.providers[provider] = {};
+      }
+      config.providers[provider]!.apiVersion = apiVersion;
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to save ${provider} API version: ${error}`);
+    }
+  }
+
+  private getEnvVarForProvider(provider: ProviderType, field: 'apiKey' | 'endpoint' | 'deploymentName' | 'apiVersion'): string | null {
     const envVars: Record<ProviderType, Record<string, string>> = {
       groq: {
         apiKey: 'GROQ_API_KEY',
-        endpoint: ''
+        endpoint: '',
+        deploymentName: '',
+        apiVersion: ''
       },
       openai: {
         apiKey: 'OPENAI_API_KEY',
-        endpoint: ''
+        endpoint: '',
+        deploymentName: '',
+        apiVersion: ''
       },
       azure: {
         apiKey: 'AZURE_OPENAI_API_KEY',
-        endpoint: 'AZURE_OPENAI_ENDPOINT'
+        endpoint: 'AZURE_OPENAI_ENDPOINT',
+        deploymentName: 'AZURE_OPENAI_DEPLOYMENT_NAME',
+        apiVersion: 'AZURE_OPENAI_API_VERSION'
       },
       openrouter: {
         apiKey: 'OPENROUTER_API_KEY',
-        endpoint: ''
+        endpoint: '',
+        deploymentName: '',
+        apiVersion: ''
       }
     };
 
