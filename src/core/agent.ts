@@ -1,10 +1,10 @@
-import Groq from 'groq-sdk';
-import type { ClientOptions } from 'groq-sdk';
 import { executeTool } from '../tools/tools.js';
 import { validateReadBeforeEdit, getReadBeforeEditError } from '../tools/validators.js';
 import { ALL_TOOL_SCHEMAS, DANGEROUS_TOOLS, APPROVAL_REQUIRED_TOOLS } from '../tools/tool-schemas.js';
 import { ConfigManager } from '../utils/local-settings.js';
-import { getProxyAgent, getProxyInfo } from '../utils/proxy-config.js';
+import { ProviderFactory, ProviderType, registerAllProviders } from '../providers/factory.js';
+import { IProvider } from '../providers/base.js';
+import { DEFAULT_MODELS } from '../providers/models.js';
 import fs from 'fs';
 import path from 'path';
 
@@ -16,9 +16,9 @@ interface Message {
 }
 
 export class Agent {
-  private client: Groq | null = null;
+  private provider: IProvider | null = null;
+  private currentProviderType: ProviderType;
   private messages: Message[] = [];
-  private apiKey: string | null = null;
   private model: string;
   private temperature: number;
   private sessionAutoApprove: boolean = false;
@@ -48,6 +48,7 @@ export class Agent {
     this.temperature = temperature;
     this.configManager = new ConfigManager();
     this.proxyOverride = proxyOverride;
+    this.currentProviderType = this.configManager.getDefaultProvider();
     
     // Set debug mode
     debugEnabled = debug || false;
@@ -63,6 +64,10 @@ export class Agent {
     this.messages.push({ role: 'system', content: this.systemMessage });
 
     // Load project context if available
+    this.loadProjectContext();
+  }
+
+  private loadProjectContext(): void {
     try {
       const explicitContextFile = process.env.GROQ_CONTEXT_FILE;
       const baseDir = process.env.GROQ_CONTEXT_DIR || process.cwd();
@@ -91,10 +96,14 @@ export class Agent {
     debug?: boolean,
     proxyOverride?: string
   ): Promise<Agent> {
+    // Ensure providers are registered
+    await registerAllProviders();
+    
     // Check for default model in config if model not explicitly provided
     const configManager = new ConfigManager();
-    const defaultModel = configManager.getDefaultModel();
-    const selectedModel = defaultModel || model;
+    const defaultProvider = configManager.getDefaultProvider();
+    const defaultModel = configManager.getProviderDefaultModel(defaultProvider) || DEFAULT_MODELS[defaultProvider];
+    const selectedModel = model || defaultModel;
     
     const agent = new Agent(
       selectedModel,
@@ -103,11 +112,100 @@ export class Agent {
       debug,
       proxyOverride
     );
+    
+    // Initialize provider
+    await agent.initializeCurrentProvider();
+    
     return agent;
   }
 
+  private async initializeCurrentProvider(): Promise<void> {
+    try {
+      this.provider = await ProviderFactory.createProvider(this.currentProviderType);
+      
+      // Get provider configuration
+      const config = this.getProviderConfig(this.currentProviderType);
+      
+      // Initialize provider
+      await this.provider.initialize(config);
+      
+      debugLog(`Initialized ${this.currentProviderType} provider successfully`);
+    } catch (error) {
+      debugLog(`Failed to initialize ${this.currentProviderType} provider:`, error);
+      throw new Error(`Failed to initialize ${this.currentProviderType} provider: ${error}`);
+    }
+  }
+
+  private getProviderConfig(providerType: ProviderType): any {
+    const apiKey = this.configManager.getProviderApiKey(providerType);
+    if (!apiKey) {
+      throw new Error(`No API key found for ${providerType} provider. Please use /login ${providerType} to set your credentials.`);
+    }
+
+    const config: any = {
+      apiKey,
+      model: this.model
+    };
+
+    // Add provider-specific configuration
+    switch (providerType) {
+      case 'azure':
+        const endpoint = this.configManager.getProviderEndpoint(providerType);
+        const deploymentName = this.configManager.getProviderDeploymentName(providerType);
+        const apiVersion = this.configManager.getProviderApiVersion(providerType);
+        
+        if (!endpoint) {
+          throw new Error(`No endpoint found for Azure OpenAI. Please use /login azure to set your credentials.`);
+        }
+        if (!deploymentName) {
+          throw new Error(`No deployment name found for Azure OpenAI. Please use /login azure to set your credentials.`);
+        }
+        
+        config.endpoint = endpoint;
+        config.deploymentName = deploymentName;
+        config.apiVersion = apiVersion || '2024-10-21';
+        break;
+      
+      default:
+        // Other providers only need API key
+        break;
+    }
+
+    return config;
+  }
+
+  public async switchProvider(providerType: ProviderType, model?: string): Promise<void> {
+    debugLog(`Switching to provider: ${providerType}, model: ${model}`);
+    
+    // Update provider type
+    this.currentProviderType = providerType;
+    this.configManager.setDefaultProvider(providerType);
+    
+    // Update model if provided
+    if (model) {
+      this.model = model;
+      this.configManager.setProviderDefaultModel(providerType, model);
+    } else {
+      // Use default model for new provider
+      const defaultModel = this.configManager.getProviderDefaultModel(providerType) || DEFAULT_MODELS[providerType];
+      this.model = defaultModel;
+    }
+    
+    // Clear current provider
+    this.provider = null;
+    
+    // Initialize new provider
+    await this.initializeCurrentProvider();
+    
+    // Update system message to reflect new provider
+    this.systemMessage = this.buildDefaultSystemMessage();
+    
+    debugLog(`Successfully switched to ${providerType} provider with model ${this.model}`);
+  }
+
   private buildDefaultSystemMessage(): string {
-    return `You are a coding assistant powered by ${this.model} on Groq. Tools are available to you. Use tools to complete tasks.
+    const providerName = this.provider?.displayName || this.currentProviderType;
+    return `You are a coding assistant powered by ${this.model} on ${providerName}. Tools are available to you. Use tools to complete tasks.
 
 CRITICAL: For ANY implementation request (building apps, creating components, writing code), you MUST use tools to create actual files. NEVER provide text-only responses for coding tasks that require implementation.
 
@@ -156,9 +254,8 @@ Be direct and efficient.
 
 Don't generate markdown tables.
 
-When asked about your identity, you should identify yourself as a coding assistant running on the ${this.model} model via Groq.`;
+When asked about your identity, you should identify yourself as a coding assistant running on the ${this.model} model via ${providerName}.`;
   }
-
 
   public setToolCallbacks(callbacks: {
     onToolStart?: (name: string, args: Record<string, any>) => void;
@@ -180,38 +277,33 @@ When asked about your identity, you should identify yourself as a coding assista
     this.onError = callbacks.onError;
   }
 
-  public setApiKey(apiKey: string): void {
-    debugLog('Setting API key in agent...');
-    debugLog('API key provided:', apiKey ? `${apiKey.substring(0, 8)}...` : 'empty');
-    this.apiKey = apiKey;
-    
-    // Get proxy configuration (with override if provided)
-    const proxyAgent = getProxyAgent(this.proxyOverride);
-    const proxyInfo = getProxyInfo(this.proxyOverride);
-    
-    if (proxyInfo.enabled) {
-      debugLog(`Using ${proxyInfo.type} proxy: ${proxyInfo.url}`);
-    }
-    
-    // Initialize Groq client with proxy if available
-    const clientOptions: ClientOptions = { apiKey };
-    if (proxyAgent) {
-      clientOptions.httpAgent = proxyAgent;
-    }
-    
-    this.client = new Groq(clientOptions);
-    debugLog('Groq client initialized with provided API key' + (proxyInfo.enabled ? ' and proxy' : ''));
+  public getCurrentProvider(): ProviderType {
+    return this.currentProviderType;
   }
 
-  public saveApiKey(apiKey: string): void {
-    this.configManager.setApiKey(apiKey);
-    this.setApiKey(apiKey);
+  public async configureProvider(providerType: ProviderType, credentials: Record<string, string>): Promise<void> {
+    // Save credentials to configuration
+    if (credentials.apiKey) {
+      this.configManager.setProviderApiKey(providerType, credentials.apiKey);
+    }
+    if (credentials.endpoint) {
+      this.configManager.setProviderEndpoint(providerType, credentials.endpoint);
+    }
+    if (credentials.deploymentName) {
+      this.configManager.setProviderDeploymentName(providerType, credentials.deploymentName);
+    }
+    if (credentials.apiVersion) {
+      this.configManager.setProviderApiVersion(providerType, credentials.apiVersion);
+    }
+
+    // If this is the current provider, reinitialize it
+    if (providerType === this.currentProviderType) {
+      await this.initializeCurrentProvider();
+    }
   }
 
-  public clearApiKey(): void {
-    this.configManager.clearApiKey();
-    this.apiKey = null;
-    this.client = null;
+  public getCurrentModel(): string {
+    return this.model;
   }
 
   public clearHistory(): void {
@@ -221,20 +313,15 @@ When asked about your identity, you should identify yourself as a coding assista
 
   public setModel(model: string): void {
     this.model = model;
-    // Save as default model
-    this.configManager.setDefaultModel(model);
+    // Save as default model for current provider
+    this.configManager.setProviderDefaultModel(this.currentProviderType, model);
     // Update system message to reflect new model
-    const newSystemMessage = this.buildDefaultSystemMessage();
-    this.systemMessage = newSystemMessage;
+    this.systemMessage = this.buildDefaultSystemMessage();
     // Update the system message in the conversation
     const systemMsgIndex = this.messages.findIndex(msg => msg.role === 'system' && msg.content.includes('coding assistant'));
     if (systemMsgIndex >= 0) {
-      this.messages[systemMsgIndex].content = newSystemMessage;
+      this.messages[systemMsgIndex].content = this.systemMessage;
     }
-  }
-
-  public getCurrentModel(): string {
-    return this.model;
   }
 
   public setSessionAutoApprove(enabled: boolean): void {
@@ -261,27 +348,9 @@ When asked about your identity, you should identify yourself as a coding assista
     // Reset interrupt flag at the start of a new chat
     this.isInterrupted = false;
     
-    // Check API key on first message send
-    if (!this.client) {
-      debugLog('Initializing Groq client...');
-      // Try environment variable first
-      const envApiKey = process.env.GROQ_API_KEY;
-      if (envApiKey) {
-        debugLog('Using API key from environment variable');
-        this.setApiKey(envApiKey);
-      } else {
-        // Try config file
-        debugLog('Environment variable GROQ_API_KEY not found, checking config file');
-        const configApiKey = this.configManager.getApiKey();
-        if (configApiKey) {
-          debugLog('Using API key from config file');
-          this.setApiKey(configApiKey);
-        } else {
-          debugLog('No API key found anywhere');
-          throw new Error('No API key available. Please use /login to set your Groq API key.');
-        }
-      }
-      debugLog('Groq client initialized successfully');
+    // Check if provider is initialized
+    if (!this.provider) {
+      throw new Error(`${this.currentProviderType} provider not initialized. Please check your configuration.`);
     }
 
     // Add user message
@@ -300,57 +369,26 @@ When asked about your identity, you should identify yourself as a coding assista
         }
         
         try {
-          // Check client exists
-          if (!this.client) {
-            throw new Error('Groq client not initialized');
-          }
-
-          debugLog('Making API call to Groq with model:', this.model);
+          debugLog(`Making API call using ${this.currentProviderType} provider with model:`, this.model);
           debugLog('Messages count:', this.messages.length);
           debugLog('Last few messages:', this.messages.slice(-3));
           
-          // Prepare request body for curl logging
-          const requestBody = {
-            model: this.model,
-            messages: this.messages,
-            tools: ALL_TOOL_SCHEMAS,
-            tool_choice: 'auto' as const,
-            temperature: this.temperature,
-            max_tokens: 8000,
-            stream: false as const
-          };
-          
-          // Log equivalent curl command
           this.requestCount++;
-          const curlCommand = generateCurlCommand(this.apiKey!, requestBody, this.requestCount);
-          if (curlCommand) {
-            debugLog('Equivalent curl command:', curlCommand);
-          }
           
           // Create AbortController for this request
           this.currentAbortController = new AbortController();
           
-          const response = await this.client.chat.completions.create({
+          const response = await this.provider.chat(this.messages, {
             model: this.model,
-            messages: this.messages as any,
             tools: ALL_TOOL_SCHEMAS,
-            tool_choice: 'auto',
+            toolChoice: 'auto',
             temperature: this.temperature,
-            max_tokens: 8000,
-            stream: false
-          }, {
-            signal: this.currentAbortController.signal
+            maxTokens: 8000
           });
 
-          debugLog('Full API response received:', response);
+          debugLog('API response received:', response);
           debugLog('Response usage:', response.usage);
-          debugLog('Response finish_reason:', response.choices[0].finish_reason);
-          debugLog('Response choices length:', response.choices.length);
-          
-          const message = response.choices[0].message;
-          
-          // Extract reasoning if present
-          const reasoning = (message as any).reasoning;
+          debugLog('Response finish_reason:', response.finishReason);
           
           // Pass usage data to callback if available
           if (response.usage && this.onApiUsage) {
@@ -361,33 +399,30 @@ When asked about your identity, you should identify yourself as a coding assista
               total_time: response.usage.total_time
             });
           }
-          debugLog('Message content length:', message.content?.length || 0);
-          debugLog('Message has tool_calls:', !!message.tool_calls);
-          debugLog('Message tool_calls count:', message.tool_calls?.length || 0);
           
-          if (response.choices[0].finish_reason !== 'stop' && response.choices[0].finish_reason !== 'tool_calls') {
-            debugLog('WARNING - Unexpected finish_reason:', response.choices[0].finish_reason);
-          }
+          debugLog('Message content length:', response.content?.length || 0);
+          debugLog('Message has tool_calls:', !!response.toolCalls);
+          debugLog('Message tool_calls count:', response.toolCalls?.length || 0);
 
           // Handle tool calls if present
-          if (message.tool_calls) {
+          if (response.toolCalls && response.toolCalls.length > 0) {
             // Show thinking text or reasoning if present
-            if (message.content || reasoning) {
+            if (response.content || response.reasoning) {
               if (this.onThinkingText) {
-                this.onThinkingText(message.content || '', reasoning);
+                this.onThinkingText(response.content || '', response.reasoning);
               }
             }
 
             // Add assistant message to history
             const assistantMsg: Message = {
               role: 'assistant',
-              content: message.content || ''
+              content: response.content || ''
             };
-            assistantMsg.tool_calls = message.tool_calls;
+            assistantMsg.tool_calls = response.toolCalls;
             this.messages.push(assistantMsg);
 
             // Execute tool calls
-            for (const toolCall of message.tool_calls) {
+            for (const toolCall of response.toolCalls) {
               // Check for interruption before each tool execution
               if (this.isInterrupted) {
                 debugLog('Tool execution interrupted by user');
@@ -421,14 +456,14 @@ When asked about your identity, you should identify yourself as a coding assista
           }
 
           // No tool calls, this is the final response
-          const content = message.content || '';
+          const content = response.content || '';
           debugLog('Final response - no tool calls detected');
           debugLog('Final content length:', content.length);
           debugLog('Final content preview:', content.substring(0, 200));
           
           if (this.onFinalMessage) {
             debugLog('Calling onFinalMessage callback');
-            this.onFinalMessage(content, reasoning);
+            this.onFinalMessage(content, response.reasoning);
           } else {
             debugLog('No onFinalMessage callback set');
           }
@@ -468,20 +503,10 @@ When asked about your identity, you should identify yourself as a coding assista
           let is401Error = false;
           
           if (error instanceof Error) {
-            // Check if it's an API error with more details
-            if ('status' in error && 'error' in error) {
-              const apiError = error as any;
-              is401Error = apiError.status === 401;
-              if (apiError.error?.error?.message) {
-                errorMessage = `API Error (${apiError.status}): ${apiError.error.error.message}`;
-                if (apiError.error.error.code) {
-                  errorMessage += ` (Code: ${apiError.error.error.code})`;
-                }
-              } else {
-                errorMessage = `API Error (${apiError.status}): ${error.message}`;
-              }
-            } else {
-              errorMessage = `Error: ${error.message}`;
+            errorMessage = `Error: ${error.message}`;
+            // Check for authentication errors
+            if (error.message.includes('401') || error.message.includes('invalid API key') || error.message.includes('authentication')) {
+              is401Error = true;
             }
           } else {
             errorMessage = `Error: ${String(error)}`;
@@ -489,7 +514,7 @@ When asked about your identity, you should identify yourself as a coding assista
           
           // For 401 errors (invalid API key), don't retry - terminate immediately
           if (is401Error) {
-            throw new Error(`${errorMessage}. Please check your API key and use /login to set a valid key.`);
+            throw new Error(`${errorMessage}. Please check your ${this.currentProviderType} API key and use /login ${this.currentProviderType} to set a valid key.`);
           }
           
           // Ask user if they want to retry via callback
@@ -641,7 +666,6 @@ When asked about your identity, you should identify yourself as a coding assista
   }
 }
 
-
 // Debug logging to file
 const DEBUG_LOG_FILE = path.join(process.cwd(), 'debug-agent.log');
 let debugLogCleared = false;
@@ -659,22 +683,4 @@ function debugLog(message: string, data?: any) {
   const timestamp = new Date().toISOString();
   const logEntry = `[${timestamp}] ${message}${data ? '\n' + JSON.stringify(data, null, 2) : ''}\n`;
   fs.appendFileSync(DEBUG_LOG_FILE, logEntry);
-}
-
-function generateCurlCommand(apiKey: string, requestBody: any, requestCount: number): string {
-  if (!debugEnabled) return '';
-  
-  const maskedApiKey = `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 8)}`;
-  
-  // Write request body to JSON file
-  const jsonFileName = `debug-request-${requestCount}.json`;
-  const jsonFilePath = path.join(process.cwd(), jsonFileName);
-  fs.writeFileSync(jsonFilePath, JSON.stringify(requestBody, null, 2));
-  
-  const curlCmd = `curl -X POST "https://api.groq.com/openai/v1/chat/completions" \\
-  -H "Authorization: Bearer ${maskedApiKey}" \\
-  -H "Content-Type: application/json" \\
-  -d @${jsonFileName}`;
-  
-  return curlCmd;
 }

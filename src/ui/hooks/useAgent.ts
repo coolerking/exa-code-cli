@@ -333,9 +333,7 @@ export function useAgent(
     }
   }, [pendingError]);
 
-  const setApiKey = useCallback((apiKey: string) => {
-    agent.setApiKey(apiKey);
-  }, [agent]);
+  // Note: setApiKey method removed - use agent.configureProvider() directly
 
   const toggleAutoApprove = useCallback(() => {
     const newAutoApproveState = !sessionAutoApprove;
@@ -381,7 +379,6 @@ export function useAgent(
     respondToMaxIterations,
     respondToError,
     addMessage,
-    setApiKey,
     clearHistory,
     toggleAutoApprove,
     toggleReasoning,

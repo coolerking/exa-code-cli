@@ -4,7 +4,9 @@ import { PROVIDER_MODELS, DEFAULT_MODELS } from './models.js';
 // Dynamic import for OpenAI SDK
 async function createOpenAIClient(options: { apiKey: string }): Promise<any> {
   try {
-    const OpenAI = await import('openai').then(m => m.default);
+    const dynamicImport = new Function('specifier', 'return import(specifier)');
+    const openaiModule = await dynamicImport('openai');
+    const OpenAI = openaiModule.default;
     return new OpenAI(options);
   } catch (error) {
     throw new Error('openai package is required but not installed. Please run: npm install openai');

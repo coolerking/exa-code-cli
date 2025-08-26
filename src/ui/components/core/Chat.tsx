@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Text, useInput, useApp } from 'ink';
 import { Agent } from '../../../core/agent.js';
+import { ProviderType } from '../../../providers/factory.js';
 import { useAgent } from '../../hooks/useAgent.js';
 import { useTokenMetrics } from '../../hooks/useTokenMetrics.js';
 import { useSessionStats } from '../../hooks/useSessionStats.js';
@@ -10,6 +11,8 @@ import TokenMetrics from '../display/TokenMetrics.js';
 import PendingToolApproval from '../input-overlays/PendingToolApproval.js';
 import Login from '../input-overlays/Login.js';
 import ModelSelector from '../input-overlays/ModelSelector.js';
+import ProviderModelSelector from '../input-overlays/ProviderModelSelector.js';
+import ProviderLogin from '../input-overlays/ProviderLogin.js';
 import MaxIterationsContinue from '../input-overlays/MaxIterationsContinue.js';
 import ErrorRetry from '../input-overlays/ErrorRetry.js';
 import { handleSlashCommand } from '../../../commands/index.js';
@@ -70,7 +73,6 @@ export default function Chat({ agent }: ChatProps) {
     respondToMaxIterations,
     respondToError,
     addMessage,
-    setApiKey,
     clearHistory,
     toggleAutoApprove,
     toggleReasoning,
@@ -82,6 +84,8 @@ export default function Chat({ agent }: ChatProps) {
   const [showInput, setShowInput] = useState(true);
   const [showLogin, setShowLogin] = useState(false);
   const [showModelSelector, setShowModelSelector] = useState(false);
+  const [showProviderLogin, setShowProviderLogin] = useState<ProviderType | null>(null);
+  const [showProviderModelSelector, setShowProviderModelSelector] = useState(false);
 
   // Handle global keyboard shortcuts
   useInput((input, key) => {
@@ -122,8 +126,8 @@ export default function Chat({ agent }: ChatProps) {
 
   // Hide input when processing, waiting for approval, error retry, or showing login/model selector
   useEffect(() => {
-    setShowInput(!isProcessing && !pendingApproval && !pendingError && !showLogin && !showModelSelector);
-  }, [isProcessing, pendingApproval, pendingError, showLogin, showModelSelector]);
+    setShowInput(!isProcessing && !pendingApproval && !pendingError && !showLogin && !showModelSelector && !showProviderLogin && !showProviderModelSelector);
+  }, [isProcessing, pendingApproval, pendingError, showLogin, showModelSelector, showProviderLogin, showProviderModelSelector]);
 
 
   const handleSendMessage = async (message: string) => {
@@ -132,6 +136,7 @@ export default function Chat({ agent }: ChatProps) {
       
       // Handle slash commands
       if (message.startsWith('/')) {
+        const args = message.split(' ').slice(1); // Remove command itself
         handleSlashCommand(message, {
           addMessage,
           clearHistory: () => {
@@ -140,9 +145,12 @@ export default function Chat({ agent }: ChatProps) {
           },
           setShowLogin,
           setShowModelSelector,
+          setShowProviderLogin,
+          setShowProviderModelSelector,
           toggleReasoning,
           showReasoning,
           sessionStats,
+          args,
         });
         return;
       }
@@ -166,8 +174,9 @@ export default function Chat({ agent }: ChatProps) {
 
   const handleLogin = (apiKey: string) => {
     setShowLogin(false);
-    // Save the API key persistently
-    agent.saveApiKey(apiKey);
+    // Save the API key persistently for the current provider
+    const currentProvider = agent.getCurrentProvider();
+    agent.configureProvider(currentProvider, { apiKey });
     addMessage({
       role: 'system',
       content: 'API key saved successfully. You can now start chatting with the assistant.',
@@ -200,6 +209,45 @@ export default function Chat({ agent }: ChatProps) {
     addMessage({
       role: 'system',
       content: 'Model selection canceled.',
+    });
+  };
+
+  const handleProviderLogin = (provider: ProviderType, credentials: Record<string, string>) => {
+    setShowProviderLogin(null);
+    // Save provider credentials
+    agent.configureProvider(provider, credentials);
+    addMessage({
+      role: 'system',
+      content: `${provider} credentials configured successfully.`,
+    });
+  };
+
+  const handleProviderLoginCancel = () => {
+    setShowProviderLogin(null);
+    addMessage({
+      role: 'system',
+      content: 'Provider login canceled.',
+    });
+  };
+
+  const handleProviderModelSelect = (provider: ProviderType, model: string) => {
+    setShowProviderModelSelector(false);
+    // Clear chat history and session stats when switching providers/models
+    clearHistory();
+    clearSessionStats();
+    // Switch to the new provider and model
+    agent.switchProvider(provider, model);
+    addMessage({
+      role: 'system',
+      content: `Switched to ${provider}: ${model}. Chat history has been cleared.`,
+    });
+  };
+
+  const handleProviderModelCancel = () => {
+    setShowProviderModelSelector(false);
+    addMessage({
+      role: 'system',
+      content: 'Provider/model selection canceled.',
     });
   };
 
@@ -259,6 +307,19 @@ export default function Chat({ agent }: ChatProps) {
           <Login
             onSubmit={handleLogin}
             onCancel={handleLoginCancel}
+          />
+        ) : showProviderLogin !== null ? (
+          <ProviderLogin
+            selectedProvider={showProviderLogin}
+            onSubmit={handleProviderLogin}
+            onCancel={handleProviderLoginCancel}
+          />
+        ) : showProviderModelSelector ? (
+          <ProviderModelSelector
+            onSubmit={handleProviderModelSelect}
+            onCancel={handleProviderModelCancel}
+            currentProvider={agent.getCurrentProvider?.() || 'groq'}
+            currentModel={agent.getCurrentModel?.() || undefined}
           />
         ) : showModelSelector ? (
           <ModelSelector
