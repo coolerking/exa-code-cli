@@ -1,11 +1,28 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
+import { ProviderType } from '../providers/factory.js';
+
+interface ProviderConfig {
+  apiKey?: string;
+  endpoint?: string; // For Azure OpenAI
+  defaultModel?: string;
+}
 
 interface Config {
+  // Legacy fields for backward compatibility
   groqApiKey?: string;
   defaultModel?: string;
   groqProxy?: string;
+  
+  // New multi-provider fields
+  defaultProvider?: ProviderType;
+  providers?: {
+    groq?: ProviderConfig;
+    openai?: ProviderConfig;
+    azure?: ProviderConfig;
+    openrouter?: ProviderConfig;
+  };
 }
 
 const CONFIG_DIR = '.groq'; // In home directory
@@ -52,12 +69,15 @@ export class ConfigManager {
     }
   }
 
+  // Legacy methods for backward compatibility
   public getApiKey(): string | null {
     const config = this.readConfig();
-    return config.groqApiKey || null;
+    return config.groqApiKey || this.getProviderApiKey('groq');
   }
 
   public setApiKey(apiKey: string): void {
+    this.setProviderApiKey('groq', apiKey);
+    // Also set legacy field for backward compatibility
     try {
       const config = this.readConfig();
       config.groqApiKey = apiKey;
@@ -68,6 +88,8 @@ export class ConfigManager {
   }
 
   public clearApiKey(): void {
+    this.clearProviderApiKey('groq');
+    // Also clear legacy field
     try {
       const config = this.readConfig();
       delete config.groqApiKey;
@@ -82,6 +104,152 @@ export class ConfigManager {
     } catch (error) {
       console.warn('Failed to clear API key:', error);
     }
+  }
+
+  // New multi-provider methods
+  public getDefaultProvider(): ProviderType {
+    const config = this.readConfig();
+    return config.defaultProvider || 'groq';
+  }
+
+  public setDefaultProvider(provider: ProviderType): void {
+    try {
+      const config = this.readConfig();
+      config.defaultProvider = provider;
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to save default provider: ${error}`);
+    }
+  }
+
+  public getProviderConfig(provider: ProviderType): ProviderConfig | null {
+    const config = this.readConfig();
+    return config.providers?.[provider] || null;
+  }
+
+  public getProviderApiKey(provider: ProviderType): string | null {
+    // Check environment variables first
+    const envKey = this.getEnvVarForProvider(provider, 'apiKey');
+    if (envKey) {
+      return envKey;
+    }
+
+    // Then check config file
+    const providerConfig = this.getProviderConfig(provider);
+    return providerConfig?.apiKey || null;
+  }
+
+  public setProviderApiKey(provider: ProviderType, apiKey: string): void {
+    try {
+      const config = this.readConfig();
+      if (!config.providers) {
+        config.providers = {};
+      }
+      if (!config.providers[provider]) {
+        config.providers[provider] = {};
+      }
+      config.providers[provider]!.apiKey = apiKey;
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to save ${provider} API key: ${error}`);
+    }
+  }
+
+  public clearProviderApiKey(provider: ProviderType): void {
+    try {
+      const config = this.readConfig();
+      if (config.providers?.[provider]) {
+        delete config.providers[provider]!.apiKey;
+        
+        // Remove provider section if it's empty
+        const providerConfig = config.providers[provider];
+        if (providerConfig && Object.keys(providerConfig).length === 0) {
+          delete config.providers[provider];
+        }
+        
+        // Remove providers section if it's empty
+        if (config.providers && Object.keys(config.providers).length === 0) {
+          delete config.providers;
+        }
+        
+        this.writeConfig(config);
+      }
+    } catch (error) {
+      console.warn(`Failed to clear ${provider} API key:`, error);
+    }
+  }
+
+  public getProviderEndpoint(provider: ProviderType): string | null {
+    // Check environment variables first
+    const envEndpoint = this.getEnvVarForProvider(provider, 'endpoint');
+    if (envEndpoint) {
+      return envEndpoint;
+    }
+
+    // Then check config file
+    const providerConfig = this.getProviderConfig(provider);
+    return providerConfig?.endpoint || null;
+  }
+
+  public setProviderEndpoint(provider: ProviderType, endpoint: string): void {
+    try {
+      const config = this.readConfig();
+      if (!config.providers) {
+        config.providers = {};
+      }
+      if (!config.providers[provider]) {
+        config.providers[provider] = {};
+      }
+      config.providers[provider]!.endpoint = endpoint;
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to save ${provider} endpoint: ${error}`);
+    }
+  }
+
+  public getProviderDefaultModel(provider: ProviderType): string | null {
+    const providerConfig = this.getProviderConfig(provider);
+    return providerConfig?.defaultModel || null;
+  }
+
+  public setProviderDefaultModel(provider: ProviderType, model: string): void {
+    try {
+      const config = this.readConfig();
+      if (!config.providers) {
+        config.providers = {};
+      }
+      if (!config.providers[provider]) {
+        config.providers[provider] = {};
+      }
+      config.providers[provider]!.defaultModel = model;
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to save ${provider} default model: ${error}`);
+    }
+  }
+
+  private getEnvVarForProvider(provider: ProviderType, field: 'apiKey' | 'endpoint'): string | null {
+    const envVars: Record<ProviderType, Record<string, string>> = {
+      groq: {
+        apiKey: 'GROQ_API_KEY',
+        endpoint: ''
+      },
+      openai: {
+        apiKey: 'OPENAI_API_KEY',
+        endpoint: ''
+      },
+      azure: {
+        apiKey: 'AZURE_OPENAI_API_KEY',
+        endpoint: 'AZURE_OPENAI_ENDPOINT'
+      },
+      openrouter: {
+        apiKey: 'OPENROUTER_API_KEY',
+        endpoint: ''
+      }
+    };
+
+    const envVarName = envVars[provider]?.[field];
+    return envVarName ? process.env[envVarName] || null : null;
   }
 
   public getDefaultModel(): string | null {
