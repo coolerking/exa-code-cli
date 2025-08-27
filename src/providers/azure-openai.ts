@@ -63,7 +63,7 @@ export class AzureOpenAIProvider extends BaseProvider {
       apiVersion: config.apiVersion || '2024-10-21'
     });
     
-    console.debug(`Azure OpenAI client initialized with endpoint: ${config.endpoint}`);
+    console.debug('Azure OpenAI client initialized with provided API key and endpoint: ' + config.endpoint);
   }
 
   async chat(messages: Message[], options: ChatOptions): Promise<ChatResponse> {
@@ -76,15 +76,30 @@ export class AzureOpenAIProvider extends BaseProvider {
     }
 
     try {
-      const response = await this.client.chat.completions.create({
+      // Determine which token parameter to use based on the model
+      const requestParams: any = {
         model: this.config.deploymentName, // Azure OpenAI uses deployment name as model
         messages: messages as any,
         tools: options.tools as any,
         tool_choice: options.toolChoice as any,
         temperature: options.temperature || 1,
-        max_tokens: options.maxTokens || 4000,
         stream: false
-      });
+      };
+
+      // Use max_completion_tokens for newer models (o1, o3, o4, gpt-5 and later series)
+      // Use max_tokens for older models (gpt-3.5, gpt-4 series)
+      const modelName = options.model?.toLowerCase() || '';
+      if (modelName.includes('o1-') || modelName.includes('o3-') || modelName.includes('o4-') || 
+          modelName.includes('o5-') || modelName.includes('o6-') || modelName.includes('o7-') || 
+          modelName.includes('o8-') || modelName.includes('o9-') || modelName.includes('gpt-5')) {
+        requestParams.max_completion_tokens = options.maxTokens || 4000;
+      } else {
+        requestParams.max_tokens = options.maxTokens || 4000;
+      }
+
+      const response = await this.client.chat.completions.create(requestParams);
+
+      console.debug(`Azure OpenAI response received using deployment: ${this.config.deploymentName}`);
 
       const message = response.choices[0].message;
 

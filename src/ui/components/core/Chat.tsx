@@ -248,7 +248,7 @@ export default function Chat({ agent }: ChatProps) {
     } catch (error) {
       addMessage({
         role: 'system',
-        content: `Failed to switch to ${provider}: ${model}. ${error}. Please check your provider configuration with /login ${provider}.`,
+        content: `Failed to switch to ${provider}: ${model}. Error: ${error instanceof Error ? error.message : error}`,
       });
     }
   };

@@ -141,28 +141,41 @@ export class Agent {
       debugLog(`Initialized ${this.currentProviderType} provider successfully`);
     } catch (error) {
       debugLog(`Failed to initialize ${this.currentProviderType} provider:`, error);
-      
-      // If this is not the fallback provider, try to fallback to groq
-      if (this.currentProviderType !== 'groq') {
-        debugLog('Attempting fallback to groq provider');
-        try {
-          this.currentProviderType = 'groq';
-          this.model = DEFAULT_MODELS.groq;
-          this.configManager.setDefaultProvider('groq');
-          this.configManager.setProviderDefaultModel('groq', this.model);
-          
-          this.provider = await ProviderFactory.createProvider('groq');
-          const fallbackConfig = this.getProviderConfig('groq');
-          await this.provider.initialize(fallbackConfig);
-          
-          debugLog('Successfully fell back to groq provider');
-          return;
-        } catch (fallbackError) {
-          debugLog('Fallback to groq also failed:', fallbackError);
-        }
-      }
-      
       throw new Error(`Failed to initialize ${this.currentProviderType} provider: ${error}`);
+    }
+  }
+
+  private async validateProviderConfiguration(providerType: ProviderType): Promise<void> {
+    const apiKey = this.configManager.getProviderApiKey(providerType);
+    if (!apiKey) {
+      throw new Error(`No API key found for ${providerType} provider. Please use /login ${providerType} to set your credentials.`);
+    }
+
+    // Add provider-specific validation
+    switch (providerType) {
+      case 'azure':
+        const endpoint = this.configManager.getProviderEndpoint(providerType);
+        const deploymentName = this.configManager.getProviderDeploymentName(providerType);
+        
+        if (!endpoint) {
+          throw new Error(`Azure OpenAI endpoint is required. Please use /login azure to configure your endpoint and deployment.`);
+        }
+        if (!deploymentName) {
+          throw new Error(`Azure OpenAI deployment name is required. Please use /login azure to configure your deployment.`);
+        }
+        break;
+      
+      case 'openrouter':
+        // OpenRouter may need specific validation
+        break;
+      
+      case 'openai':
+        // OpenAI just needs API key which is already checked
+        break;
+      
+      case 'groq':
+        // Groq just needs API key which is already checked
+        break;
     }
   }
 
@@ -212,6 +225,9 @@ export class Agent {
     const previousModel = this.model;
     
     try {
+      // Validate provider configuration before switching
+      await this.validateProviderConfiguration(providerType);
+      
       // Update provider type
       this.currentProviderType = providerType;
       this.configManager.setDefaultProvider(providerType);
@@ -226,8 +242,9 @@ export class Agent {
         this.model = defaultModel;
       }
       
-      // Clear current provider
+      // Clear current provider and factory instances to ensure fresh initialization
       this.provider = null;
+      ProviderFactory.clearInstances();
       
       // Initialize new provider
       await this.initializeCurrentProvider();
@@ -250,14 +267,17 @@ export class Agent {
       this.configManager.setDefaultProvider(previousProviderType);
       this.configManager.setProviderDefaultModel(previousProviderType, previousModel);
       
-      // Try to restore previous provider
-      try {
-        this.provider = await ProviderFactory.createProvider(previousProviderType);
-        const config = this.getProviderConfig(previousProviderType);
-        await this.provider.initialize(config);
-        debugLog(`Rolled back to ${previousProviderType} provider successfully`);
-      } catch (rollbackError) {
-        debugLog('Failed to rollback, system may be in inconsistent state:', rollbackError);
+      // Try to restore previous provider (only if we cleared it)
+      if (!this.provider) {
+        try {
+          ProviderFactory.clearInstances();
+          this.provider = await ProviderFactory.createProvider(previousProviderType);
+          const config = this.getProviderConfig(previousProviderType);
+          await this.provider.initialize(config);
+          debugLog(`Rolled back to ${previousProviderType} provider successfully`);
+        } catch (rollbackError) {
+          debugLog('Failed to rollback, system may be in inconsistent state:', rollbackError);
+        }
       }
       
       throw error;
