@@ -1,5 +1,6 @@
 import { BaseProvider, ProviderConfig, Message, ChatOptions, ChatResponse } from './base.js';
 import { PROVIDER_MODELS, DEFAULT_MODELS } from './models.js';
+import { getModelParameterConfig, validateModelParameters } from './model-params.js';
 
 // Dynamic import for OpenAI SDK (Azure OpenAI)
 async function createAzureOpenAIClient(options: { apiKey: string; endpoint: string; apiVersion: string }): Promise<any> {
@@ -76,7 +77,12 @@ export class AzureOpenAIProvider extends BaseProvider {
     }
 
     try {
-      // Determine which token parameter to use based on the model
+      const model = options.model || this.config.model || DEFAULT_MODELS.azure;
+      const maxTokens = options.maxTokens || 4000;
+      
+      // Get model parameter configuration
+      const modelConfig = getModelParameterConfig(model);
+      
       const requestParams: any = {
         model: this.config.deploymentName, // Azure OpenAI uses deployment name as model
         messages: messages as any,
@@ -85,16 +91,18 @@ export class AzureOpenAIProvider extends BaseProvider {
         temperature: options.temperature || 1,
         stream: false
       };
-
-      // Use max_completion_tokens for newer models (o1, o3, o4, gpt-5 and later series)
-      // Use max_tokens for older models (gpt-3.5, gpt-4 series)
-      const modelName = options.model?.toLowerCase() || '';
-      if (modelName.includes('o1-') || modelName.includes('o3-') || modelName.includes('o4-') || 
-          modelName.includes('o5-') || modelName.includes('o6-') || modelName.includes('o7-') || 
-          modelName.includes('o8-') || modelName.includes('o9-') || modelName.includes('gpt-5')) {
-        requestParams.max_completion_tokens = options.maxTokens || 4000;
+      
+      // Use appropriate token parameter based on model configuration
+      if (modelConfig.useMaxCompletionTokens) {
+        requestParams.max_completion_tokens = maxTokens;
       } else {
-        requestParams.max_tokens = options.maxTokens || 4000;
+        requestParams.max_tokens = maxTokens;
+      }
+      
+      // Validate parameters before sending request
+      const validation = validateModelParameters(model, requestParams);
+      if (!validation.valid) {
+        throw new Error(`Parameter validation failed: ${validation.errors.join(', ')}`);
       }
 
       const response = await this.client.chat.completions.create(requestParams);
