@@ -69,14 +69,14 @@ export class Agent {
 
   private loadProjectContext(): void {
     try {
-      const explicitContextFile = process.env.GROQ_CONTEXT_FILE;
-      const baseDir = process.env.GROQ_CONTEXT_DIR || process.cwd();
-      const contextPath = explicitContextFile || path.join(baseDir, '.groq', 'context.md');
-      const contextLimit = parseInt(process.env.GROQ_CONTEXT_LIMIT || '20000', 10);
+      const explicitContextFile = process.env.EXA_CONTEXT_FILE;
+      const baseDir = process.env.EXA_CONTEXT_DIR || process.cwd();
+      const contextPath = explicitContextFile || path.join(baseDir, '.exa', 'context.md');
+      const contextLimit = parseInt(process.env.EXA_CONTEXT_LIMIT || '20000', 10);
       if (fs.existsSync(contextPath)) {
         const ctx = fs.readFileSync(contextPath, 'utf-8');
         const trimmed = ctx.length > contextLimit ? ctx.slice(0, contextLimit) + '\n... [truncated]' : ctx;
-        const contextSource = explicitContextFile ? contextPath : '.groq/context.md';
+        const contextSource = explicitContextFile ? contextPath : '.exa/context.md';
         this.messages.push({
           role: 'system',
           content: `Project context loaded from ${contextSource}. Use this as high-level reference when reasoning about the repository.\n\n${trimmed}`
@@ -126,12 +126,42 @@ export class Agent {
       // Get provider configuration
       const config = this.getProviderConfig(this.currentProviderType);
       
+      // Check compatibility if provider supports it
+      if (this.provider.checkCompatibility) {
+        const compatibility = this.provider.checkCompatibility(this.model);
+        if (!compatibility.compatible) {
+          debugLog(`Model ${this.model} compatibility issues:`, compatibility.issues);
+          console.warn(`Model ${this.model} may have compatibility issues: ${compatibility.issues.join(', ')}`);
+        }
+      }
+      
       // Initialize provider
       await this.provider.initialize(config);
       
       debugLog(`Initialized ${this.currentProviderType} provider successfully`);
     } catch (error) {
       debugLog(`Failed to initialize ${this.currentProviderType} provider:`, error);
+      
+      // If this is not the fallback provider, try to fallback to groq
+      if (this.currentProviderType !== 'groq') {
+        debugLog('Attempting fallback to groq provider');
+        try {
+          this.currentProviderType = 'groq';
+          this.model = DEFAULT_MODELS.groq;
+          this.configManager.setDefaultProvider('groq');
+          this.configManager.setProviderDefaultModel('groq', this.model);
+          
+          this.provider = await ProviderFactory.createProvider('groq');
+          const fallbackConfig = this.getProviderConfig('groq');
+          await this.provider.initialize(fallbackConfig);
+          
+          debugLog('Successfully fell back to groq provider');
+          return;
+        } catch (fallbackError) {
+          debugLog('Fallback to groq also failed:', fallbackError);
+        }
+      }
+      
       throw new Error(`Failed to initialize ${this.currentProviderType} provider: ${error}`);
     }
   }
@@ -177,30 +207,61 @@ export class Agent {
   public async switchProvider(providerType: ProviderType, model?: string): Promise<void> {
     debugLog(`Switching to provider: ${providerType}, model: ${model}`);
     
-    // Update provider type
-    this.currentProviderType = providerType;
-    this.configManager.setDefaultProvider(providerType);
+    // Save current state in case we need to rollback
+    const previousProviderType = this.currentProviderType;
+    const previousModel = this.model;
     
-    // Update model if provided
-    if (model) {
-      this.model = model;
-      this.configManager.setProviderDefaultModel(providerType, model);
-    } else {
-      // Use default model for new provider
-      const defaultModel = this.configManager.getProviderDefaultModel(providerType) || DEFAULT_MODELS[providerType];
-      this.model = defaultModel;
+    try {
+      // Update provider type
+      this.currentProviderType = providerType;
+      this.configManager.setDefaultProvider(providerType);
+      
+      // Update model if provided
+      if (model) {
+        this.model = model;
+        this.configManager.setProviderDefaultModel(providerType, model);
+      } else {
+        // Use default model for new provider
+        const defaultModel = this.configManager.getProviderDefaultModel(providerType) || DEFAULT_MODELS[providerType];
+        this.model = defaultModel;
+      }
+      
+      // Clear current provider
+      this.provider = null;
+      
+      // Initialize new provider
+      await this.initializeCurrentProvider();
+      
+      // Update system message to reflect new provider
+      this.systemMessage = this.buildDefaultSystemMessage();
+      
+      // Update the system message in the conversation
+      const systemMsgIndex = this.messages.findIndex(msg => msg.role === 'system' && msg.content.includes('coding assistant'));
+      if (systemMsgIndex >= 0) {
+        this.messages[systemMsgIndex].content = this.systemMessage;
+      }
+      
+      debugLog(`Successfully switched to ${providerType} provider with model ${this.model}`);
+    } catch (error) {
+      // Rollback to previous state
+      debugLog(`Failed to switch to ${providerType}, rolling back to ${previousProviderType}`);
+      this.currentProviderType = previousProviderType;
+      this.model = previousModel;
+      this.configManager.setDefaultProvider(previousProviderType);
+      this.configManager.setProviderDefaultModel(previousProviderType, previousModel);
+      
+      // Try to restore previous provider
+      try {
+        this.provider = await ProviderFactory.createProvider(previousProviderType);
+        const config = this.getProviderConfig(previousProviderType);
+        await this.provider.initialize(config);
+        debugLog(`Rolled back to ${previousProviderType} provider successfully`);
+      } catch (rollbackError) {
+        debugLog('Failed to rollback, system may be in inconsistent state:', rollbackError);
+      }
+      
+      throw error;
     }
-    
-    // Clear current provider
-    this.provider = null;
-    
-    // Initialize new provider
-    await this.initializeCurrentProvider();
-    
-    // Update system message to reflect new provider
-    this.systemMessage = this.buildDefaultSystemMessage();
-    
-    debugLog(`Successfully switched to ${providerType} provider with model ${this.model}`);
   }
 
   private buildDefaultSystemMessage(): string {

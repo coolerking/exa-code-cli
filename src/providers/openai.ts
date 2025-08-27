@@ -1,5 +1,6 @@
 import { BaseProvider, ProviderConfig, Message, ChatOptions, ChatResponse } from './base.js';
 import { PROVIDER_MODELS, DEFAULT_MODELS } from './models.js';
+import { getModelParameterConfig, validateModelParameters } from './model-params.js';
 
 // Dynamic import for OpenAI SDK
 async function createOpenAIClient(options: { apiKey: string }): Promise<any> {
@@ -47,21 +48,77 @@ export class OpenAIProvider extends BaseProvider {
     console.debug('OpenAI client initialized');
   }
 
+  checkCompatibility(model: string): { compatible: boolean; issues: string[] } {
+    const modelConfig = getModelParameterConfig(model);
+    const issues: string[] = [];
+    
+    // Check if model is in our supported list
+    const supportedModelIds = this.models.map(m => m.id);
+    if (!supportedModelIds.includes(model)) {
+      issues.push(`Model ${model} is not in supported model list`);
+    }
+    
+    // Check parameter compatibility
+    const testParams: any = {
+      model: model,
+      messages: [],
+      temperature: 1,
+      stream: false
+    };
+    
+    // Add appropriate token parameter based on model
+    if (modelConfig.useMaxCompletionTokens) {
+      testParams.max_completion_tokens = 1000;
+    } else {
+      testParams.max_tokens = 1000;
+    }
+    
+    const validation = validateModelParameters(model, testParams);
+    if (!validation.valid) {
+      issues.push(...validation.errors);
+    }
+    
+    return {
+      compatible: issues.length === 0,
+      issues
+    };
+  }
+
   async chat(messages: Message[], options: ChatOptions): Promise<ChatResponse> {
     if (!this.client || !this.config) {
       throw new Error('OpenAI provider not initialized');
     }
 
     try {
-      const response = await this.client.chat.completions.create({
-        model: options.model || this.config.model || DEFAULT_MODELS.openai,
+      const model = options.model || this.config.model || DEFAULT_MODELS.openai;
+      const maxTokens = options.maxTokens || 4000;
+      
+      // Get model parameter configuration
+      const modelConfig = getModelParameterConfig(model);
+      
+      const requestParams: any = {
+        model: model,
         messages: messages as any,
         tools: options.tools as any,
         tool_choice: options.toolChoice as any,
         temperature: options.temperature || 1,
-        max_tokens: options.maxTokens || 4000,
         stream: false
-      });
+      };
+      
+      // Use appropriate token parameter based on model configuration
+      if (modelConfig.useMaxCompletionTokens) {
+        requestParams.max_completion_tokens = maxTokens;
+      } else {
+        requestParams.max_tokens = maxTokens;
+      }
+      
+      // Validate parameters before sending request
+      const validation = validateModelParameters(model, requestParams);
+      if (!validation.valid) {
+        throw new Error(`Parameter validation failed: ${validation.errors.join(', ')}`);
+      }
+      
+      const response = await this.client.chat.completions.create(requestParams);
 
       const message = response.choices[0].message;
 

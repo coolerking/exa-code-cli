@@ -1,9 +1,9 @@
 {
-	"name": "groq-code-cli",
+	"name": "exa-code-cli",
 	"version": "1.0.2",
 	"license": "MIT",
 	"bin": {
-		"groq": "dist/core/cli.js"
+		"exa": "dist/core/cli.js"
 	},
 	"type": "module",
 	"engines": {
@@ -24,6 +24,7 @@
 		"https-proxy-agent": "^7.0.6",
 		"ink": "^6.0.1",
 		"meow": "^11.0.0",
+		"openai": "^5.16.0",
 		"react": "^19.1.0",
 		"socks-proxy-agent": "^8.0.5"
 	},

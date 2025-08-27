@@ -15,7 +15,7 @@ interface Config {
   // Legacy fields for backward compatibility
   groqApiKey?: string;
   defaultModel?: string;
-  groqProxy?: string;
+  exaProxy?: string;
   
   // New multi-provider fields
   defaultProvider?: ProviderType;
@@ -27,7 +27,7 @@ interface Config {
   };
 }
 
-const CONFIG_DIR = '.groq'; // In home directory
+const CONFIG_DIR = '.exa'; // In home directory
 const CONFIG_FILE = 'local-settings.json';
 
 export class ConfigManager {
@@ -335,7 +335,7 @@ export class ConfigManager {
 
   public getProxy(): string | null {
     const config = this.readConfig();
-    return config.groqProxy || null;
+    return config.exaProxy || null;
   }
 
   public setProxy(proxy: string): void {
@@ -360,7 +360,7 @@ export class ConfigManager {
       }
       
       const config = this.readConfig();
-      config.groqProxy = trimmed;
+      config.exaProxy = trimmed;
       this.writeConfig(config);
     } catch (error) {
       // Preserve original error via cause for better debugging
@@ -371,7 +371,7 @@ export class ConfigManager {
   public clearProxy(): void {
     try {
       const config = this.readConfig();
-      delete config.groqProxy;
+      delete config.exaProxy;
 
       if (Object.keys(config).length === 0) {
         if (fs.existsSync(this.configPath)) {

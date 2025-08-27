@@ -5,8 +5,8 @@ import * as path from 'path';
 import { Agent } from '../src/core/agent.js';
 
 function setupDirWithContext(): string {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'groq-agentctx-'));
-  const ctxDir = path.join(tmp, '.groq');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exa-agentctx-'));
+  const ctxDir = path.join(tmp, '.exa');
   fs.mkdirSync(ctxDir);
   fs.writeFileSync(path.join(ctxDir, 'context.md'), 'HelloCtx\n');
   return tmp;
@@ -20,14 +20,14 @@ function cleanupDir(dir: string): void {
   }
 }
 
-test('Agent auto-loads .groq/context.md as system message', async t => {
+test('Agent auto-loads .exa/context.md as system message', async t => {
   const dir = setupDirWithContext();
   const original = { ...process.env };
-  (process.env as any).GROQ_CONTEXT_DIR = dir;
+  (process.env as any).EXA_CONTEXT_DIR = dir;
   try {
     const agent = await Agent.create('test-model', 1.0, null, false);
     const msgs = (agent as any).messages as Array<{ role: string; content: string }>;
-    const found = msgs.find(m => m.role === 'system' && m.content.includes('Project context loaded from .groq/context.md'));
+    const found = msgs.find(m => m.role === 'system' && m.content.includes('Project context loaded from .exa/context.md'));
     t.truthy(found);
     t.true(found!.content.includes('HelloCtx'));
   } finally {
@@ -39,9 +39,9 @@ test('Agent auto-loads .groq/context.md as system message', async t => {
 });
 
 test('Agent handles missing context gracefully', async t => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'groq-nocontext-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'exa-nocontext-'));
   const original = { ...process.env };
-  (process.env as any).GROQ_CONTEXT_DIR = dir;
+  (process.env as any).EXA_CONTEXT_DIR = dir;
   try {
     const agent = await Agent.create('test-model', 1.0, null, false);
     const msgs = (agent as any).messages as Array<{ role: string; content: string }>;

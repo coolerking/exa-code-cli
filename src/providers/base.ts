@@ -50,6 +50,7 @@ export interface IProvider {
   isConfigured(): boolean;
   getRequiredConfigFields(): string[];
   validateConfig(config: Partial<ProviderConfig>): { valid: boolean; errors: string[] };
+  checkCompatibility?(model: string): { compatible: boolean; issues: string[] };
 }
 
 export abstract class BaseProvider implements IProvider {

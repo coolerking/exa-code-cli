@@ -5,7 +5,7 @@ import * as path from 'path';
 import { generateProjectContext, writeProjectContext } from '../src/utils/context.js';
 
 function makeTempProject(): string {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'groq-context-'));
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'exa-context-'));
   // Create files and dirs
   fs.mkdirSync(path.join(tmp, 'src'));
   fs.mkdirSync(path.join(tmp, 'docs'));
@@ -48,7 +48,7 @@ test('generateProjectContext returns summary, languages, and lists', t => {
   }
 });
 
-test('writeProjectContext writes .groq/context.{md,json}', t => {
+test('writeProjectContext writes .exa/context.{md,json}', t => {
   const root = makeTempProject();
   try {
     const { mdPath, jsonPath } = writeProjectContext(root, { maxDepth: 4 });

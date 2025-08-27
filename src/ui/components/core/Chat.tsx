@@ -230,17 +230,27 @@ export default function Chat({ agent }: ChatProps) {
     });
   };
 
-  const handleProviderModelSelect = (provider: ProviderType, model: string) => {
+  const handleProviderModelSelect = async (provider: ProviderType, model: string) => {
     setShowProviderModelSelector(false);
-    // Clear chat history and session stats when switching providers/models
-    clearHistory();
-    clearSessionStats();
-    // Switch to the new provider and model
-    agent.switchProvider(provider, model);
-    addMessage({
-      role: 'system',
-      content: `Switched to ${provider}: ${model}. Chat history has been cleared.`,
-    });
+    
+    try {
+      // Clear chat history and session stats when switching providers/models
+      clearHistory();
+      clearSessionStats();
+      
+      // Switch to the new provider and model
+      await agent.switchProvider(provider, model);
+      
+      addMessage({
+        role: 'system',
+        content: `Switched to ${provider}: ${model}. Chat history has been cleared.`,
+      });
+    } catch (error) {
+      addMessage({
+        role: 'system',
+        content: `Failed to switch to ${provider}: ${model}. ${error}. Please check your provider configuration with /login ${provider}.`,
+      });
+    }
   };
 
   const handleProviderModelCancel = () => {
