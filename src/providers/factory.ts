@@ -71,4 +71,10 @@ export async function registerAllProviders(): Promise<void> {
     const { OpenRouterProvider } = await import('./openrouter.js');
     return new OpenRouterProvider();
   });
+  
+  // Ollama provider
+  ProviderFactory.registerProvider('ollama', async () => {
+    const { OllamaProvider } = await import('./ollama.js');
+    return new OllamaProvider();
+  });
 }
