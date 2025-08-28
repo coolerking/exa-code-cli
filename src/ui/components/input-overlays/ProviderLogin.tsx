@@ -49,6 +49,14 @@ const PROVIDER_CONFIGS: ProviderInfo[] = [
     fields: [
       { key: 'apiKey', label: 'API Key', placeholder: 'sk-or-...', required: true }
     ]
+  },
+  {
+    id: 'ollama',
+    name: 'Ollama Local',
+    description: 'Connect to your local Ollama server',
+    fields: [
+      { key: 'endpoint', label: 'Endpoint URL', placeholder: 'http://192.168.11.11:11434', required: true }
+    ]
   }
 ];
 

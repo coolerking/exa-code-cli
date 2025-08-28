@@ -7,7 +7,7 @@ export const loginCommand: CommandDefinition = {
   handler: ({ setShowProviderLogin, args }: CommandContext) => {
     // Check if a specific provider was specified
     const providerArg = args?.[0] as ProviderType;
-    const validProviders: ProviderType[] = ['groq', 'openai', 'azure', 'openrouter'];
+    const validProviders: ProviderType[] = ['groq', 'openai', 'azure', 'openrouter', 'ollama'];
     
     if (providerArg && validProviders.includes(providerArg)) {
       // Direct provider login
