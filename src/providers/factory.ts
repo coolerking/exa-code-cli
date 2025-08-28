@@ -1,6 +1,6 @@
 import { IProvider } from './base.js';
 
-export type ProviderType = 'groq' | 'openai' | 'azure' | 'openrouter';
+export type ProviderType = 'groq' | 'openai' | 'azure' | 'openrouter' | 'ollama';
 
 export class ProviderFactory {
   private static providers: Map<ProviderType, () => Promise<IProvider>> = new Map();

@@ -30,6 +30,12 @@ export const PROVIDER_MODELS = {
     { id: 'openai/gpt-oss-20b', name: 'GPT OSS 20B', description: 'Fastest and cheapest model' },
     { id: 'deepseek/deepseek-chat-v3.1', name: 'DeepSeek Chat v3.1', description: 'Advanced reasoning model' },
   ] as ModelInfo[],
+
+  ollama: [
+    { id: 'gemma3:270m', name: 'Gemma 3 270M', description: 'Lightweight Google model (default)' },
+    { id: 'gpt-oss:20b', name: 'GPT OSS 20B', description: 'Medium-sized capable model' },
+    { id: 'gpt-oss:120b', name: 'GPT OSS 120B', description: 'Large high-performance model' },
+  ] as ModelInfo[],
 } as const;
 
 // Default models for each provider
@@ -38,4 +44,5 @@ export const DEFAULT_MODELS = {
   openai: 'o3-mini',
   azure: 'o3-mini',
   openrouter: 'openai/gpt-oss-120b',
+  ollama: 'gemma3:270m',
 } as const;
