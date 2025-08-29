@@ -323,7 +323,14 @@ Use tools to:
 - Create, edit, and manage files (create_file, edit_file, list_files, read_file, delete_file)
 - Execute commands (execute_command)
 - Search for information (search_files)
+- Access real-time web content (web_fetch, web_search)
 - Help you understand the codebase before answering the user's question
+
+WEB ACCESS CAPABILITIES:
+- web_fetch: Retrieve and analyze content from URLs (news, documentation, articles)
+- web_search: Search the web for current information using multiple providers
+- Supports Google/Bing (with API keys) and DuckDuckGo (free) search
+- Use for getting latest information, tutorials, documentation, or current events
 
 IMPLEMENTATION TASK RULES:
 - When asked to "build", "create", "implement", or "make" anything: USE TOOLS TO CREATE FILES

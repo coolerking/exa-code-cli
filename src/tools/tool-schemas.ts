@@ -442,7 +442,8 @@ export const SAFE_TOOLS = [
   'list_files',
   'search_files',
   'create_tasks',
-  'update_tasks'
+  'update_tasks',
+  'web_search'
 ];
 
 // Tools that require approval, unless auto-approval is enabled

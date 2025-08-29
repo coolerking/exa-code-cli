@@ -1,0 +1,146 @@
+{
+  "generated_at": "2025-08-29T06:17:36.595Z",
+  "root": "/home/hori/projects/exa-code-cli",
+  "summary": {
+    "total_files": 55,
+    "total_directories": 18,
+    "languages": [
+      {
+        "extension": "ts",
+        "files": 38
+      },
+      {
+        "extension": "md",
+        "files": 7
+      },
+      {
+        "extension": "json",
+        "files": 3
+      },
+      {
+        "extension": "png",
+        "files": 2
+      },
+      {
+        "extension": "(none)",
+        "files": 1
+      },
+      {
+        "extension": "db",
+        "files": 1
+      },
+      {
+        "extension": "db-shm",
+        "files": 1
+      },
+      {
+        "extension": "db-wal",
+        "files": 1
+      },
+      {
+        "extension": "tsx",
+        "files": 1
+      }
+    ]
+  },
+  "package": {
+    "name": "exa-code-cli",
+    "version": "1.0.2",
+    "scripts": [
+      "build",
+      "dev",
+      "test"
+    ],
+    "dependencies_count": 14,
+    "dev_dependencies_count": 16
+  },
+  "config_files": [
+    "package.json",
+    "tsconfig.json"
+  ],
+  "notable_files": [
+    "LICENSE",
+    "OLLAMA_TESTING_GUIDE_JP.md",
+    "README_groq_code_org.md",
+    "docs/OLLAMA_IMPLEMENTATION_SUMMARY.md",
+    "logs/20250826.md",
+    "logs/20250827.md",
+    "logs/20250828.md",
+    "logs/20250829.md"
+  ],
+  "tree": [
+    "LICENSE",
+    "OLLAMA_TESTING_GUIDE_JP.md",
+    "README_groq_code_org.md",
+    "data/",
+    "cipher.db",
+    "cipher.db-shm",
+    "cipher.db-wal",
+    "docs/",
+    "login.png",
+    "OLLAMA_IMPLEMENTATION_SUMMARY.md",
+    "thumbnail.png",
+    "logs/",
+    "20250826.md",
+    "20250827.md",
+    "20250828.md",
+    "20250829.md",
+    "package-lock.json",
+    "package.json",
+    "src/",
+    "commands/",
+    "definitions/",
+    "clear.ts",
+    "help.ts",
+    "init.ts",
+    "login.ts",
+    "model.ts",
+    "reasoning.ts",
+    "stats.ts",
+    "base.ts",
+    "index.ts",
+    "core/",
+    "agent.ts",
+    "cli.ts",
+    "providers/",
+    "azure-openai.ts",
+    "base.ts",
+    "factory.ts",
+    "groq.ts",
+    "model-params.ts",
+    "models.ts",
+    "ollama.ts",
+    "openai.ts",
+    "openrouter.ts",
+    "tests/",
+    "proxy-config.test.ts",
+    "tools/",
+    "prompt-templates.ts",
+    "tool-schemas.ts",
+    "tools.ts",
+    "validators.ts",
+    "web-utils.ts",
+    "ui/",
+    "components/",
+    "core/",
+    "display/",
+    "input-overlays/",
+    "hooks/",
+    "useAgent.ts",
+    "useSessionStats.ts",
+    "useTokenMetrics.ts",
+    "App.tsx",
+    "utils/",
+    "constants.ts",
+    "context.ts",
+    "file-ops.ts",
+    "local-settings.ts",
+    "markdown.ts",
+    "proxy-config.ts",
+    "test/",
+    "agent-context-load.test.ts",
+    "context-generator.test.ts",
+    "init-command.test.ts",
+    "tsconfig.json"
+  ]
+}
