@@ -359,6 +359,37 @@ export const UPDATE_TASKS_SCHEMA: ToolSchema = {
   }
 };
 
+// Web Tools
+
+export const WEB_FETCH_SCHEMA: ToolSchema = {
+  type: 'function',
+  function: {
+    name: 'web_fetch',
+    description: 'Fetch content from a URL and convert HTML to markdown for analysis. Use for getting real-time information from web pages. Example: {"url": "https://example.com/article", "prompt": "Summarize the main points"}',
+    parameters: {
+      type: 'object',
+      properties: {
+        url: {
+          type: 'string',
+          description: 'Valid HTTP/HTTPS URL to fetch content from. Must be a complete URL starting with http:// or https://'
+        },
+        prompt: {
+          type: 'string', 
+          description: 'Description of what you want to do with the fetched content (summarize, analyze, extract specific information, etc.)'
+        },
+        timeout: {
+          type: 'integer',
+          description: 'Request timeout in milliseconds (1000-60000)',
+          minimum: 1000,
+          maximum: 60000,
+          default: 30000
+        }
+      },
+      required: ['url', 'prompt']
+    }
+  }
+};
+
 // All tools combined
 export const ALL_TOOL_SCHEMAS = [
   READ_FILE_SCHEMA,
@@ -369,7 +400,8 @@ export const ALL_TOOL_SCHEMAS = [
   LIST_FILES_SCHEMA,
   CREATE_TASKS_SCHEMA,
   UPDATE_TASKS_SCHEMA,
-  EXECUTE_COMMAND_SCHEMA
+  EXECUTE_COMMAND_SCHEMA,
+  WEB_FETCH_SCHEMA
 ];
 
 // Safe tools that can be auto-executed without approval
@@ -385,6 +417,7 @@ export const SAFE_TOOLS = [
 export const APPROVAL_REQUIRED_TOOLS = [
   'create_file',
   'edit_file',
+  'web_fetch'
 ];
 
 // Dangerous tools that always require approval

@@ -3,7 +3,8 @@ import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, createDirectory, displayTree } from '../utils/file-ops.js';
-import { setReadFilesTracker } from './validators.js';
+import { setReadFilesTracker, validateWebFetchParameters } from './validators.js';
+import { secureHttpFetch, processHtmlToMarkdown, getWebConfig } from './web-utils.js';
 
 const execAsync = promisify(exec);
 
@@ -763,6 +764,109 @@ export async function updateTasks(taskUpdates: TaskUpdate[]): Promise<ToolResult
   }
 }
 
+/**
+ * Fetch content from a URL and convert to markdown for analysis
+ */
+export async function webFetch(url: string, prompt: string, timeout?: number): Promise<ToolResult> {
+  try {
+    // Parameter validation
+    const validation = validateWebFetchParameters(url, prompt, timeout);
+    if (!validation.valid) {
+      return createToolResponse(
+        false, 
+        undefined, 
+        '', 
+        `Parameter validation failed: ${validation.errors.join(', ')}`
+      );
+    }
+
+    // Get web configuration
+    const config = getWebConfig();
+    const requestTimeout = timeout || config.REQUEST_TIMEOUT;
+
+    // Fetch content from URL with security controls
+    const fetchResult = await secureHttpFetch(url, requestTimeout);
+    
+    if (!fetchResult.success) {
+      return createToolResponse(
+        false,
+        undefined,
+        '',
+        `Failed to fetch URL: ${fetchResult.error}`
+      );
+    }
+
+    // Process HTML content to markdown
+    const processingResult = processHtmlToMarkdown(fetchResult.content!, fetchResult.finalUrl);
+    
+    if (!processingResult.success) {
+      return createToolResponse(
+        false,
+        undefined,
+        '',
+        `Failed to process HTML content: ${processingResult.error}`
+      );
+    }
+
+    // Format the result for analysis
+    const contentData = {
+      url: fetchResult.finalUrl || url,
+      title: processingResult.title || 'Untitled',
+      description: processingResult.description || '',
+      markdown: processingResult.markdown || '',
+      contentType: fetchResult.contentType || 'text/html',
+      statusCode: fetchResult.statusCode || 200,
+      prompt: prompt.trim(),
+    };
+
+    // Create a formatted response for the user
+    const formattedContent = [
+      `# Web Content: ${contentData.title}`,
+      '',
+      `**URL:** ${contentData.url}`,
+      contentData.description ? `**Description:** ${contentData.description}` : '',
+      `**Content Type:** ${contentData.contentType}`,
+      '',
+      '## Content Analysis Request',
+      `**Task:** ${contentData.prompt}`,
+      '',
+      '## Fetched Content (Markdown)',
+      '',
+      contentData.markdown
+    ].filter(line => line !== '').join('\n');
+
+    const message = `Successfully fetched and processed content from ${contentData.url}. ` +
+      `Title: "${contentData.title}". ` +
+      `Content length: ${contentData.markdown.length} characters. ` +
+      `Ready for analysis: ${contentData.prompt}`;
+
+    return createToolResponse(
+      true,
+      {
+        content: formattedContent,
+        metadata: {
+          url: contentData.url,
+          title: contentData.title,
+          description: contentData.description,
+          contentType: contentData.contentType,
+          statusCode: contentData.statusCode,
+          contentLength: contentData.markdown.length,
+          prompt: contentData.prompt,
+        }
+      },
+      message
+    );
+
+  } catch (error: any) {
+    return createToolResponse(
+      false,
+      undefined,
+      '',
+      `Unexpected error in web fetch: ${error.message || error}`
+    );
+  }
+}
+
 // Tool Registry: maps tool names to functions
 export const TOOL_REGISTRY = {
   read_file: readFile,
@@ -774,6 +878,7 @@ export const TOOL_REGISTRY = {
   execute_command: executeCommand,
   create_tasks: createTasks,
   update_tasks: updateTasks,
+  web_fetch: webFetch,
 };
 
 /**
@@ -819,6 +924,8 @@ export async function executeTool(toolName: string, toolArgs: Record<string, any
         return await toolFunction(toolArgs.user_query, toolArgs.tasks);
       case 'update_tasks':
         return await toolFunction(toolArgs.task_updates);
+      case 'web_fetch':
+        return await toolFunction(toolArgs.url, toolArgs.prompt, toolArgs.timeout);
       default:
         return createToolResponse(false, undefined, '', 'Error: Tool not implemented');
     }
