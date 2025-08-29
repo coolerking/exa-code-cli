@@ -18,19 +18,27 @@
 		"dist"
 	],
 	"dependencies": {
+		"axios": "^1.6.0",
 		"chalk": "^5.4.1",
+		"cheerio": "^1.0.0-rc.12",
 		"commander": "^14.0.0",
 		"groq-sdk": "^0.27.0",
 		"https-proxy-agent": "^7.0.6",
 		"ink": "^6.0.1",
+		"jsdom": "^23.0.0",
 		"meow": "^11.0.0",
 		"openai": "^5.16.0",
 		"react": "^19.1.0",
-		"socks-proxy-agent": "^8.0.5"
+		"socks-proxy-agent": "^8.0.5",
+		"turndown": "^7.1.0",
+		"validator": "^13.11.0"
 	},
 	"devDependencies": {
 		"@sindresorhus/tsconfig": "^3.0.1",
+		"@types/jsdom": "^21.1.0",
 		"@types/react": "^19.1.8",
+		"@types/turndown": "^5.0.0",
+		"@types/validator": "^13.11.0",
 		"@vdemedes/prettier-config": "^2.0.1",
 		"ava": "^5.2.0",
 		"chalk": "^5.2.0",
