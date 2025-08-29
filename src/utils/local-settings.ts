@@ -24,6 +24,7 @@ interface Config {
     openai?: ProviderConfig;
     azure?: ProviderConfig;
     openrouter?: ProviderConfig;
+    ollama?: ProviderConfig;
   };
 }
 
@@ -309,6 +310,12 @@ export class ConfigManager {
       openrouter: {
         apiKey: 'OPENROUTER_API_KEY',
         endpoint: '',
+        deploymentName: '',
+        apiVersion: ''
+      },
+      ollama: {
+        apiKey: '',
+        endpoint: 'OLLAMA_ENDPOINT',
         deploymentName: '',
         apiVersion: ''
       }

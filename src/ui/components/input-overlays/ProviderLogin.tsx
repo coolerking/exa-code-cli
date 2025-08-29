@@ -68,7 +68,13 @@ interface ProviderLoginProps {
 
 export default function ProviderLogin({ selectedProvider, onSubmit, onCancel }: ProviderLoginProps) {
   const [providerIndex, setProviderIndex] = useState(0);
-  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const [inputValues, setInputValues] = useState<Record<string, string>>(() => {
+    // Initialize with default values for Ollama
+    if (selectedProvider === 'ollama') {
+      return { endpoint: 'http://192.168.11.11:11434' };
+    }
+    return {} as Record<string, string>;
+  });
   const [currentFieldIndex, setCurrentFieldIndex] = useState(0);
 
   const isProviderSelection = selectedProvider === null;
@@ -89,7 +95,9 @@ export default function ProviderLogin({ selectedProvider, onSubmit, onCancel }: 
       // Provider selection mode
       if (key.return) {
         const selected = PROVIDER_CONFIGS[providerIndex];
-        // Move to credential input for selected provider
+        // This is wrong - we need to show credential input, not submit empty credentials
+        // For now, we'll call onSubmit with empty credentials which should NOT save anything
+        // but trigger the parent to show credential input for the selected provider
         onSubmit(selected.id, {}); // This should trigger a re-render with selectedProvider set
         return;
       }
@@ -134,14 +142,23 @@ export default function ProviderLogin({ selectedProvider, onSubmit, onCancel }: 
         return;
       }
 
-      // Handle text input
-      if (currentProvider && input && input.length === 1) {
+      // Handle text input - improved for better usability
+      if (currentProvider && input && input.length >= 1) {
         const currentField = currentProvider.fields[currentFieldIndex];
         if (currentField) {
-          setInputValues(prev => ({
-            ...prev,
-            [currentField.key]: (prev[currentField.key] || '') + input
-          }));
+          // Handle single character input
+          if (input.length === 1) {
+            setInputValues(prev => ({
+              ...prev,
+              [currentField.key]: (prev[currentField.key] || '') + input
+            }));
+          } else {
+            // Handle pasted or multi-character input
+            setInputValues(prev => ({
+              ...prev,
+              [currentField.key]: input
+            }));
+          }
         }
       }
 
@@ -152,6 +169,18 @@ export default function ProviderLogin({ selectedProvider, onSubmit, onCancel }: 
           setInputValues(prev => ({
             ...prev,
             [currentField.key]: (prev[currentField.key] || '').slice(0, -1)
+          }));
+        }
+      }
+
+      // Handle Ctrl+A (select all) and Ctrl+V (paste) conceptually
+      if (key.ctrl && input === 'a' && currentProvider) {
+        const currentField = currentProvider.fields[currentFieldIndex];
+        if (currentField) {
+          // Clear field to simulate select all + replace
+          setInputValues(prev => ({
+            ...prev,
+            [currentField.key]: ''
           }));
         }
       }
@@ -233,10 +262,10 @@ export default function ProviderLogin({ selectedProvider, onSubmit, onCancel }: 
             </Box>
             <Box>
               <Text 
-                color={index === currentFieldIndex ? 'black' : 'gray'}
+                color={index === currentFieldIndex ? 'black' : (inputValues[field.key] ? 'white' : 'gray')}
                 backgroundColor={index === currentFieldIndex ? 'cyan' : undefined}
               >
-                {inputValues[field.key] || field.placeholder}
+                {inputValues[field.key] ? inputValues[field.key] : field.placeholder}
                 {index === currentFieldIndex ? '█' : ''}
               </Text>
             </Box>

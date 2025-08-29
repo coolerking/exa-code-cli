@@ -33,11 +33,24 @@ export class OllamaProvider extends BaseProvider {
     if (!config.endpoint) {
       errors.push('Endpoint URL is required for Ollama provider');
     } else {
-      // Basic URL validation
+      // Normalize URL for validation
+      let endpoint = config.endpoint;
+      
+      // Fix common typos
+      endpoint = endpoint.replace(/^htpp:\/\//, 'http://');
+      endpoint = endpoint.replace(/^httpp:\/\//, 'http://');
+      endpoint = endpoint.replace(/^htp:\/\//, 'http://');
+      
+      // Add protocol if missing
+      if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+        endpoint = 'http://' + endpoint;
+      }
+      
+      // Validate normalized URL
       try {
-        new URL(config.endpoint);
+        new URL(endpoint);
       } catch {
-        errors.push('Invalid endpoint URL format');
+        errors.push(`Invalid endpoint URL format: ${endpoint}`);
       }
     }
     
@@ -50,17 +63,39 @@ export class OllamaProvider extends BaseProvider {
   async initialize(config: ProviderConfig): Promise<void> {
     await super.initialize(config);
     
-    // Ensure endpoint ends with /v1 for OpenAI compatibility
+    // Normalize and fix common URL typos
     let endpoint = config.endpoint!;
+    
+    // Fix common typos in protocol
+    endpoint = endpoint.replace(/^htpp:\/\//, 'http://');
+    endpoint = endpoint.replace(/^httpp:\/\//, 'http://');
+    endpoint = endpoint.replace(/^htp:\/\//, 'http://');
+    
+    // Ensure protocol exists
+    if (!endpoint.startsWith('http://') && !endpoint.startsWith('https://')) {
+      endpoint = 'http://' + endpoint;
+    }
+    
+    // Ensure endpoint ends with /v1 for OpenAI compatibility
     if (!endpoint.endsWith('/v1')) {
       endpoint = endpoint.replace(/\/$/, '') + '/v1';
+    }
+    
+    // Validate the final URL
+    try {
+      new URL(endpoint);
+    } catch (error) {
+      throw new Error(`Invalid endpoint URL after normalization: ${endpoint}`);
     }
     
     this.client = await createOllamaClient({
       baseURL: endpoint
     });
     
-    console.debug('Ollama client initialized with endpoint:', endpoint);
+    // Show the corrected endpoint if it was modified
+    if (endpoint !== config.endpoint) {
+      console.debug('Ollama endpoint corrected from:', config.endpoint, 'to:', endpoint);
+    }
   }
 
   checkCompatibility(model: string): { compatible: boolean; issues: string[] } {
@@ -78,6 +113,17 @@ export class OllamaProvider extends BaseProvider {
     };
   }
 
+  private modelSupportsTools(model: string): boolean {
+    // Currently, most Ollama models don't support function calling/tools
+    // This list may need to be updated as Ollama adds tool support to more models
+    const toolSupportedModels: string[] = [
+      // Add models that support tools when available
+      // 'llama3.1:70b-instruct-q4_0' // Example of future tool-supporting model
+    ];
+    
+    return toolSupportedModels.includes(model);
+  }
+
   async chat(messages: Message[], options: ChatOptions): Promise<ChatResponse> {
     if (!this.client || !this.config) {
       throw new Error('Ollama provider not initialized');
@@ -85,23 +131,30 @@ export class OllamaProvider extends BaseProvider {
 
     try {
       const model = options.model || this.config.model || DEFAULT_MODELS.ollama;
-      const maxTokens = options.maxTokens || 4000;
+      const maxTokens = options.maxTokens || 2000;
+      
+      // Check if model supports tools (currently most Ollama models don't support tools)
+      const supportsTools = this.modelSupportsTools(model);
       
       const requestParams: any = {
         model: model,
         messages: messages as any,
-        tools: options.tools as any,
-        tool_choice: options.toolChoice as any,
         temperature: options.temperature || 1,
         max_tokens: maxTokens,
         stream: false
       };
       
+      // Only add tools if model supports them and tools are provided
+      if (supportsTools && options.tools && options.tools.length > 0) {
+        requestParams.tools = options.tools;
+        requestParams.tool_choice = options.toolChoice;
+      }
+      
       const response = await this.client.chat.completions.create(requestParams);
-
+      
       const message = response.choices[0].message;
 
-      return {
+      const result = {
         content: message.content || '',
         toolCalls: message.tool_calls,
         usage: response.usage ? {
@@ -111,6 +164,8 @@ export class OllamaProvider extends BaseProvider {
         } : undefined,
         finishReason: response.choices[0].finish_reason
       };
+      
+      return result;
     } catch (error: any) {
       let errorMessage = 'Unknown error occurred';
       

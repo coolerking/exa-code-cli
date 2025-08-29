@@ -42,7 +42,9 @@ async function startChat(
    ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
 `));
     
-  let defaultModel = 'moonshotai/kimi-k2-instruct';
+  // Use ConfigManager to get the correct default model
+  // This will be handled by Agent.create(), so we pass empty string
+  let defaultModel = '';
   
   // Validate proxy URL if provided
   if (proxy) {

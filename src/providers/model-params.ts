@@ -69,6 +69,68 @@ export const MODEL_PARAMETER_CONFIGS: Record<string, ModelParameterConfig> = {
       maxTokens: 4096,
       temperatureRange: [0, 2]
     }
+  },
+
+  // Ollama models - use max_tokens (OpenAI compatible)
+  'gemma3:270m': {
+    model: 'gemma3:270m',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'tool_choice', 'stream'],
+    restrictions: {
+      maxTokens: 8192,
+      temperatureRange: [0, 2]
+    }
+  },
+  
+  'gpt-oss:20b': {
+    model: 'gpt-oss:20b',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'tool_choice', 'stream'],
+    restrictions: {
+      maxTokens: 8192,
+      temperatureRange: [0, 2]
+    }
+  },
+  
+  'gpt-oss:120b': {
+    model: 'gpt-oss:120b',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'tool_choice', 'stream'],
+    restrictions: {
+      maxTokens: 8192,
+      temperatureRange: [0, 2]
+    }
+  },
+
+  // Groq models
+  'moonshotai/kimi-k2-instruct': {
+    model: 'moonshotai/kimi-k2-instruct',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'tool_choice', 'stream'],
+    restrictions: {
+      maxTokens: 4096,
+      temperatureRange: [0, 2]
+    }
+  },
+
+  'openai/gpt-oss-120b': {
+    model: 'openai/gpt-oss-120b',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'tool_choice', 'stream'],
+    restrictions: {
+      maxTokens: 8192,
+      temperatureRange: [0, 2]
+    }
+  },
+
+  'openai/gpt-oss-20b': {
+    model: 'openai/gpt-oss-20b',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'tool_choice', 'stream'],
+    restrictions: {
+      maxTokens: 8192,
+      temperatureRange: [0, 2]
+    }
   }
 };
 

@@ -146,6 +146,15 @@ export class Agent {
   }
 
   private async validateProviderConfiguration(providerType: ProviderType): Promise<void> {
+    // Ollama doesn't require an API key, only endpoint
+    if (providerType === 'ollama') {
+      const endpoint = this.configManager.getProviderEndpoint(providerType);
+      if (!endpoint) {
+        throw new Error(`No endpoint found for ${providerType} provider. Please use /login ${providerType} to set your endpoint.`);
+      }
+      return;
+    }
+    
     const apiKey = this.configManager.getProviderApiKey(providerType);
     if (!apiKey) {
       throw new Error(`No API key found for ${providerType} provider. Please use /login ${providerType} to set your credentials.`);
@@ -180,6 +189,18 @@ export class Agent {
   }
 
   private getProviderConfig(providerType: ProviderType): any {
+    // Ollama uses endpoint instead of API key
+    if (providerType === 'ollama') {
+      const endpoint = this.configManager.getProviderEndpoint(providerType);
+      if (!endpoint) {
+        throw new Error(`No endpoint found for ${providerType} provider. Please use /login ${providerType} to set your endpoint.`);
+      }
+      return {
+        endpoint,
+        model: this.model
+      };
+    }
+    
     const apiKey = this.configManager.getProviderApiKey(providerType);
     if (!apiKey) {
       throw new Error(`No API key found for ${providerType} provider. Please use /login ${providerType} to set your credentials.`);
@@ -286,6 +307,13 @@ export class Agent {
 
   private buildDefaultSystemMessage(): string {
     const providerName = this.provider?.displayName || this.currentProviderType;
+    
+    // Use lightweight system message for Ollama models (especially small ones)
+    if (this.currentProviderType === 'ollama') {
+      return `You are a coding assistant powered by ${this.model} on ${providerName}. When asked about your identity, identify yourself as a coding assistant running on the ${this.model} model via ${providerName}.`;
+    }
+    
+    // Full system message for other providers
     return `You are a coding assistant powered by ${this.model} on ${providerName}. Tools are available to you. Use tools to complete tasks.
 
 CRITICAL: For ANY implementation request (building apps, creating components, writing code), you MUST use tools to create actual files. NEVER provide text-only responses for coding tasks that require implementation.

@@ -213,8 +213,17 @@ export default function Chat({ agent }: ChatProps) {
   };
 
   const handleProviderLogin = (provider: ProviderType, credentials: Record<string, string>) => {
+    // Check if credentials are empty (provider selection phase)
+    const hasCredentials = Object.keys(credentials).length > 0 && Object.values(credentials).some(v => v.trim().length > 0);
+    
+    if (!hasCredentials) {
+      // Provider selected but no credentials entered - show credential input
+      setShowProviderLogin(provider);
+      return;
+    }
+    
+    // Valid credentials provided - configure provider
     setShowProviderLogin(null);
-    // Save provider credentials
     agent.configureProvider(provider, credentials);
     addMessage({
       role: 'system',
