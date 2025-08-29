@@ -390,6 +390,37 @@ export const WEB_FETCH_SCHEMA: ToolSchema = {
   }
 };
 
+export const WEB_SEARCH_SCHEMA: ToolSchema = {
+  type: 'function',
+  function: {
+    name: 'web_search',
+    description: 'Search the web for current information using multiple search providers. Cascades through Google -> Bing -> DuckDuckGo for best results. Example: {"query": "latest OpenAI API updates", "max_results": 5}',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          description: 'Search query string. Use natural language or specific keywords. Example: "JavaScript async/await tutorial", "Python machine learning libraries 2024"'
+        },
+        max_results: {
+          type: 'integer',
+          description: 'Maximum number of search results to return (1-20)',
+          minimum: 1,
+          maximum: 20,
+          default: 10
+        },
+        search_provider: {
+          type: 'string',
+          enum: ['auto', 'duckduckgo', 'google', 'bing'],
+          description: 'Search provider preference: auto (cascade fallback), duckduckgo (free), google (requires API key), bing (requires API key)',
+          default: 'auto'
+        }
+      },
+      required: ['query']
+    }
+  }
+};
+
 // All tools combined
 export const ALL_TOOL_SCHEMAS = [
   READ_FILE_SCHEMA,
@@ -401,7 +432,8 @@ export const ALL_TOOL_SCHEMAS = [
   CREATE_TASKS_SCHEMA,
   UPDATE_TASKS_SCHEMA,
   EXECUTE_COMMAND_SCHEMA,
-  WEB_FETCH_SCHEMA
+  WEB_FETCH_SCHEMA,
+  WEB_SEARCH_SCHEMA
 ];
 
 // Safe tools that can be auto-executed without approval

@@ -440,6 +440,359 @@ export function getWebConfig(): typeof WEB_CONFIG {
 }
 
 /**
+ * Web search functionality
+ */
+
+// Search providers configuration
+export interface SearchProvider {
+  name: string;
+  baseUrl: string;
+  requiresApiKey: boolean;
+}
+
+export const SEARCH_PROVIDERS: { [key: string]: SearchProvider } = {
+  duckduckgo: {
+    name: 'DuckDuckGo',
+    baseUrl: 'https://api.duckduckgo.com',
+    requiresApiKey: false,
+  },
+  google: {
+    name: 'Google Custom Search',
+    baseUrl: 'https://www.googleapis.com/customsearch/v1',
+    requiresApiKey: true,
+  },
+  bing: {
+    name: 'Bing Web Search',
+    baseUrl: 'https://api.bing.microsoft.com/v7.0/search',
+    requiresApiKey: true,
+  },
+};
+
+export interface SearchResult {
+  title: string;
+  url: string;
+  snippet: string;
+  displayUrl?: string;
+}
+
+export interface SearchResponse {
+  success: boolean;
+  results: SearchResult[];
+  query: string;
+  provider: string;
+  totalResults?: number;
+  error?: string;
+}
+
+/**
+ * DuckDuckGo search implementation (primary, no API key required)
+ */
+async function searchDuckDuckGo(query: string, maxResults: number = 10): Promise<SearchResponse> {
+  try {
+    // DuckDuckGo Instant Answer API
+    const response = await axios.get('https://api.duckduckgo.com/', {
+      params: {
+        q: query,
+        format: 'json',
+        no_html: '1',
+        skip_disambig: '1',
+      },
+      timeout: WEB_CONFIG.REQUEST_TIMEOUT,
+      headers: {
+        'User-Agent': WEB_CONFIG.USER_AGENT,
+      },
+    });
+
+    const data = response.data;
+    const results: SearchResult[] = [];
+
+    // Process DuckDuckGo results
+    if (data.Results && Array.isArray(data.Results)) {
+      for (const result of data.Results.slice(0, maxResults)) {
+        if (result.FirstURL && result.Text) {
+          results.push({
+            title: result.Text,
+            url: result.FirstURL,
+            snippet: result.Text,
+            displayUrl: result.FirstURL,
+          });
+        }
+      }
+    }
+
+    // If no instant answers, try related topics
+    if (results.length === 0 && data.RelatedTopics && Array.isArray(data.RelatedTopics)) {
+      for (const topic of data.RelatedTopics.slice(0, maxResults)) {
+        if (topic.FirstURL && topic.Text) {
+          results.push({
+            title: topic.Text.split(' - ')[0] || topic.Text,
+            url: topic.FirstURL,
+            snippet: topic.Text,
+            displayUrl: topic.FirstURL,
+          });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      results,
+      query,
+      provider: 'DuckDuckGo',
+      totalResults: results.length,
+    };
+
+  } catch (error: any) {
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'DuckDuckGo',
+      error: `DuckDuckGo search failed: ${error.message}`,
+    };
+  }
+}
+
+/**
+ * Google Custom Search implementation (requires API key)
+ */
+async function searchGoogle(query: string, maxResults: number = 10): Promise<SearchResponse> {
+  const apiKey = process.env.EXA_GOOGLE_SEARCH_API_KEY;
+  const searchEngineId = process.env.EXA_GOOGLE_SEARCH_ENGINE_ID;
+
+  if (!apiKey || !searchEngineId) {
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'Google',
+      error: 'Google Search API key or Search Engine ID not configured',
+    };
+  }
+
+  try {
+    const response = await axios.get(SEARCH_PROVIDERS.google.baseUrl, {
+      params: {
+        key: apiKey,
+        cx: searchEngineId,
+        q: query,
+        num: Math.min(maxResults, 10), // Google allows max 10 per request
+      },
+      timeout: WEB_CONFIG.REQUEST_TIMEOUT,
+      headers: {
+        'User-Agent': WEB_CONFIG.USER_AGENT,
+      },
+    });
+
+    const data = response.data;
+    const results: SearchResult[] = [];
+
+    if (data.items && Array.isArray(data.items)) {
+      for (const item of data.items) {
+        results.push({
+          title: item.title,
+          url: item.link,
+          snippet: item.snippet,
+          displayUrl: item.displayLink,
+        });
+      }
+    }
+
+    return {
+      success: true,
+      results,
+      query,
+      provider: 'Google',
+      totalResults: parseInt(data.searchInformation?.totalResults || '0'),
+    };
+
+  } catch (error: any) {
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'Google',
+      error: `Google search failed: ${error.response?.data?.error?.message || error.message}`,
+    };
+  }
+}
+
+/**
+ * Bing Web Search implementation (requires API key)
+ */
+async function searchBing(query: string, maxResults: number = 10): Promise<SearchResponse> {
+  const apiKey = process.env.EXA_BING_SEARCH_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'Bing',
+      error: 'Bing Search API key not configured',
+    };
+  }
+
+  try {
+    const response = await axios.get(SEARCH_PROVIDERS.bing.baseUrl, {
+      params: {
+        q: query,
+        count: Math.min(maxResults, 50), // Bing allows max 50 per request
+      },
+      timeout: WEB_CONFIG.REQUEST_TIMEOUT,
+      headers: {
+        'User-Agent': WEB_CONFIG.USER_AGENT,
+        'Ocp-Apim-Subscription-Key': apiKey,
+      },
+    });
+
+    const data = response.data;
+    const results: SearchResult[] = [];
+
+    if (data.webPages && data.webPages.value && Array.isArray(data.webPages.value)) {
+      for (const item of data.webPages.value) {
+        results.push({
+          title: item.name,
+          url: item.url,
+          snippet: item.snippet,
+          displayUrl: item.displayUrl,
+        });
+      }
+    }
+
+    return {
+      success: true,
+      results,
+      query,
+      provider: 'Bing',
+      totalResults: data.webPages?.totalEstimatedMatches || results.length,
+    };
+
+  } catch (error: any) {
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'Bing',
+      error: `Bing search failed: ${error.response?.data?.message || error.message}`,
+    };
+  }
+}
+
+/**
+ * Main search function with cascade fallback strategy
+ */
+export async function webSearch(
+  query: string,
+  maxResults: number = 10,
+  preferredProvider?: string
+): Promise<SearchResponse> {
+  // Validate query
+  if (!query || query.trim().length === 0) {
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'None',
+      error: 'Search query is required',
+    };
+  }
+
+  // Check for malicious patterns
+  const suspiciousPatterns = [
+    /script:/i,
+    /javascript:/i,
+    /data:/i,
+    /vbscript:/i,
+    /<script/i,
+    /onclick/i,
+    /onerror/i,
+  ];
+
+  if (suspiciousPatterns.some(pattern => pattern.test(query))) {
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'None',
+      error: 'Query contains suspicious patterns',
+    };
+  }
+
+  const fallbackStrategy = process.env.EXA_SEARCH_FALLBACK_STRATEGY || 'cascade';
+  const trimmedQuery = query.trim();
+  const clampedMaxResults = Math.max(1, Math.min(maxResults, 20)); // Limit between 1-20
+
+  // Determine provider order
+  let providers: string[];
+  if (preferredProvider && SEARCH_PROVIDERS[preferredProvider]) {
+    if (fallbackStrategy === 'strict') {
+      providers = [preferredProvider];
+    } else {
+      // Move preferred provider to front
+      providers = [preferredProvider, ...Object.keys(SEARCH_PROVIDERS).filter(p => p !== preferredProvider)];
+    }
+  } else {
+    // Default cascade order: Google -> Bing -> DuckDuckGo
+    providers = ['google', 'bing', 'duckduckgo'];
+  }
+
+  let lastError = '';
+
+  for (const providerName of providers) {
+    try {
+      let searchResult: SearchResponse;
+
+      switch (providerName) {
+        case 'google':
+          searchResult = await searchGoogle(trimmedQuery, clampedMaxResults);
+          break;
+        case 'bing':
+          searchResult = await searchBing(trimmedQuery, clampedMaxResults);
+          break;
+        case 'duckduckgo':
+          searchResult = await searchDuckDuckGo(trimmedQuery, clampedMaxResults);
+          break;
+        default:
+          continue;
+      }
+
+      if (searchResult.success && searchResult.results.length > 0) {
+        return searchResult;
+      } else if (searchResult.error) {
+        lastError = searchResult.error;
+        if (fallbackStrategy === 'strict') {
+          return searchResult;
+        }
+        // Continue to next provider in cascade mode
+      }
+
+    } catch (error: any) {
+      lastError = `${providerName} provider failed: ${error.message}`;
+      if (fallbackStrategy === 'strict') {
+        return {
+          success: false,
+          results: [],
+          query: trimmedQuery,
+          provider: providerName,
+          error: lastError,
+        };
+      }
+      // Continue to next provider in cascade mode
+    }
+  }
+
+  // All providers failed
+  return {
+    success: false,
+    results: [],
+    query: trimmedQuery,
+    provider: 'All',
+    error: lastError || 'All search providers failed',
+  };
+}
+
+/**
  * Clean up resources
  */
 export function cleanup(): void {

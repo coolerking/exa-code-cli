@@ -3,8 +3,8 @@ import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { writeFile, createDirectory, displayTree } from '../utils/file-ops.js';
-import { setReadFilesTracker, validateWebFetchParameters } from './validators.js';
-import { secureHttpFetch, processHtmlToMarkdown, getWebConfig } from './web-utils.js';
+import { setReadFilesTracker, validateWebFetchParameters, validateWebSearchParameters } from './validators.js';
+import { secureHttpFetch, processHtmlToMarkdown, getWebConfig, webSearch as webSearchUtil } from './web-utils.js';
 
 const execAsync = promisify(exec);
 
@@ -867,6 +867,95 @@ export async function webFetch(url: string, prompt: string, timeout?: number): P
   }
 }
 
+export async function webSearchTool(query: string, maxResults?: number, searchProvider?: string): Promise<ToolResult> {
+  try {
+    // Parameter validation
+    const validation = validateWebSearchParameters(query, maxResults, searchProvider);
+    if (!validation.valid) {
+      return createToolResponse(
+        false, 
+        undefined, 
+        '', 
+        `Parameter validation failed: ${validation.errors.join(', ')}`
+      );
+    }
+
+    // Normalize parameters
+    const normalizedQuery = query.trim();
+    const normalizedMaxResults = maxResults || 10;
+    const normalizedProvider = searchProvider === 'auto' ? undefined : searchProvider;
+
+    // Perform web search using utility function
+    const searchResult = await webSearchUtil(normalizedQuery, normalizedMaxResults, normalizedProvider);
+    
+    if (!searchResult.success) {
+      return createToolResponse(
+        false,
+        undefined,
+        '',
+        `Web search failed: ${searchResult.error}`
+      );
+    }
+
+    // Format results for display
+    const formattedResults = searchResult.results.map((result, index) => ({
+      rank: index + 1,
+      title: result.title,
+      url: result.url,
+      snippet: result.snippet,
+      displayUrl: result.displayUrl,
+    }));
+
+    // Create formatted content
+    const formattedContent = [
+      `# Web Search Results: ${normalizedQuery}`,
+      '',
+      `**Query:** ${normalizedQuery}`,
+      `**Provider:** ${searchResult.provider}`,
+      `**Results:** ${searchResult.results.length}/${normalizedMaxResults}`,
+      searchResult.totalResults ? `**Total Available:** ${searchResult.totalResults}` : '',
+      '',
+      '## Search Results',
+      '',
+      ...formattedResults.map(result => [
+        `### ${result.rank}. ${result.title}`,
+        `**URL:** ${result.url}`,
+        result.displayUrl && result.displayUrl !== result.url ? `**Display URL:** ${result.displayUrl}` : '',
+        `**Summary:** ${result.snippet}`,
+        '',
+      ].filter(line => line !== '').join('\n'))
+    ].filter(line => line !== '').join('\n');
+
+    const message = `Found ${searchResult.results.length} search result(s) for "${normalizedQuery}" ` +
+      `using ${searchResult.provider} provider` +
+      (searchResult.totalResults ? ` (${searchResult.totalResults} total available)` : '');
+
+    return createToolResponse(
+      true,
+      {
+        content: formattedContent,
+        results: formattedResults,
+        metadata: {
+          query: normalizedQuery,
+          provider: searchResult.provider,
+          resultsCount: searchResult.results.length,
+          maxResults: normalizedMaxResults,
+          totalResults: searchResult.totalResults,
+        }
+      },
+      message
+    );
+
+  } catch (error: any) {
+    return createToolResponse(
+      false,
+      undefined,
+      '',
+      `Unexpected error in web search: ${error.message || error}`
+    );
+  }
+}
+
 // Tool Registry: maps tool names to functions
 export const TOOL_REGISTRY = {
   read_file: readFile,
@@ -879,6 +968,7 @@ export const TOOL_REGISTRY = {
   create_tasks: createTasks,
   update_tasks: updateTasks,
   web_fetch: webFetch,
+  web_search: webSearchTool,
 };
 
 /**
@@ -926,6 +1016,8 @@ export async function executeTool(toolName: string, toolArgs: Record<string, any
         return await toolFunction(toolArgs.task_updates);
       case 'web_fetch':
         return await toolFunction(toolArgs.url, toolArgs.prompt, toolArgs.timeout);
+      case 'web_search':
+        return await toolFunction(toolArgs.query, toolArgs.max_results, toolArgs.search_provider);
       default:
         return createToolResponse(false, undefined, '', 'Error: Tool not implemented');
     }
