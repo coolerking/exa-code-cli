@@ -41,6 +41,11 @@ export const PROVIDER_MODELS = {
     { id: 'claude-opus-4-1-20250805', name: 'Claude Opus 4.1', description: '最高性能モデル - 複雑なタスク・大規模研究に最適' },
     { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'バランス型モデル - 日常使用に最適（デフォルト）' },
   ] as ModelInfo[],
+
+  'aws-bedrock': [
+    { id: 'anthropic.claude-opus-4-1-v1', name: 'Claude Opus 4.1 (Bedrock)', description: 'AWS Bedrock経由 - 最高性能モデル' },
+    { id: 'anthropic.claude-sonnet-4-v1', name: 'Claude Sonnet 4 (Bedrock)', description: 'AWS Bedrock経由 - バランス型モデル（デフォルト）' },
+  ] as ModelInfo[],
 } as const;
 
 // Default models for each provider
@@ -51,4 +56,5 @@ export const DEFAULT_MODELS = {
   openrouter: 'openai/gpt-oss-120b',
   ollama: 'gemma3:270m',
   anthropic: 'claude-sonnet-4-20250514',
+  'aws-bedrock': 'anthropic.claude-sonnet-4-v1',
 } as const;

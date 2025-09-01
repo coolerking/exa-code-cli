@@ -152,6 +152,27 @@ export const MODEL_PARAMETER_CONFIGS: Record<string, ModelParameterConfig> = {
       maxTokens: 8192,
       temperatureRange: [0, 1]
     }
+  },
+
+  // AWS Bedrock Claude models - use max_tokens (Bedrock API compatible)
+  'anthropic.claude-opus-4-1-v1': {
+    model: 'anthropic.claude-opus-4-1-v1',
+    useMaxCompletionTokens: false,
+    supportedParams: ['messages', 'max_tokens', 'temperature', 'tools', 'system'],
+    restrictions: {
+      maxTokens: 16384,  // 20万トークン対応だが安全性考慮
+      temperatureRange: [0, 1]
+    }
+  },
+
+  'anthropic.claude-sonnet-4-v1': {
+    model: 'anthropic.claude-sonnet-4-v1',
+    useMaxCompletionTokens: false,
+    supportedParams: ['messages', 'max_tokens', 'temperature', 'tools', 'system'],
+    restrictions: {
+      maxTokens: 8192,
+      temperatureRange: [0, 1]
+    }
   }
 };
 
@@ -177,12 +198,25 @@ export function getModelParameterConfig(model: string): ModelParameterConfig {
     };
   }
   
-  // Claude models fallback
+  // Claude models fallback (Direct API)
   if (model.startsWith('claude-')) {
     return {
       model: model,
       useMaxCompletionTokens: false,
       supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'system'],
+      restrictions: {
+        maxTokens: 8192,
+        temperatureRange: [0, 1]
+      }
+    };
+  }
+
+  // AWS Bedrock Claude models fallback
+  if (model.startsWith('anthropic.claude-')) {
+    return {
+      model: model,
+      useMaxCompletionTokens: false,
+      supportedParams: ['messages', 'max_tokens', 'temperature', 'tools', 'system'],
       restrictions: {
         maxTokens: 8192,
         temperatureRange: [0, 1]
