@@ -38,9 +38,8 @@ export const PROVIDER_MODELS = {
   ] as ModelInfo[],
 
   anthropic: [
-    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Most capable model for complex tasks (default)' },
-    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fast and cost-effective model' },
-    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Most powerful model for the most complex tasks' },
+    { id: 'claude-opus-4-1-20250805', name: 'Claude Opus 4.1', description: '最高性能モデル - 複雑なタスク・大規模研究に最適' },
+    { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'バランス型モデル - 日常使用に最適（デフォルト）' },
   ] as ModelInfo[],
 } as const;
 
@@ -51,5 +50,5 @@ export const DEFAULT_MODELS = {
   azure: 'o3-mini',
   openrouter: 'openai/gpt-oss-120b',
   ollama: 'gemma3:270m',
-  anthropic: 'claude-3-5-sonnet-20241022',
+  anthropic: 'claude-sonnet-4-20250514',
 } as const;

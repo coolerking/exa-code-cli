@@ -134,32 +134,22 @@ export const MODEL_PARAMETER_CONFIGS: Record<string, ModelParameterConfig> = {
   },
 
   // Anthropic Claude models - use max_tokens
-  'claude-3-5-sonnet-20241022': {
-    model: 'claude-3-5-sonnet-20241022',
+  'claude-opus-4-1-20250805': {
+    model: 'claude-opus-4-1-20250805',
     useMaxCompletionTokens: false,
     supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'system'],
     restrictions: {
-      maxTokens: 8192,
+      maxTokens: 16384,  // 20万トークン対応だが安全性考慮
       temperatureRange: [0, 1]
     }
   },
 
-  'claude-3-5-haiku-20241022': {
-    model: 'claude-3-5-haiku-20241022',
+  'claude-sonnet-4-20250514': {
+    model: 'claude-sonnet-4-20250514',
     useMaxCompletionTokens: false,
     supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'system'],
     restrictions: {
       maxTokens: 8192,
-      temperatureRange: [0, 1]
-    }
-  },
-
-  'claude-3-opus-20240229': {
-    model: 'claude-3-opus-20240229',
-    useMaxCompletionTokens: false,
-    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'system'],
-    restrictions: {
-      maxTokens: 4096,
       temperatureRange: [0, 1]
     }
   }
