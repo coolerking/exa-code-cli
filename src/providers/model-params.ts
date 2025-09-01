@@ -131,6 +131,37 @@ export const MODEL_PARAMETER_CONFIGS: Record<string, ModelParameterConfig> = {
       maxTokens: 8192,
       temperatureRange: [0, 2]
     }
+  },
+
+  // Anthropic Claude models - use max_tokens
+  'claude-3-5-sonnet-20241022': {
+    model: 'claude-3-5-sonnet-20241022',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'system'],
+    restrictions: {
+      maxTokens: 8192,
+      temperatureRange: [0, 1]
+    }
+  },
+
+  'claude-3-5-haiku-20241022': {
+    model: 'claude-3-5-haiku-20241022',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'system'],
+    restrictions: {
+      maxTokens: 8192,
+      temperatureRange: [0, 1]
+    }
+  },
+
+  'claude-3-opus-20240229': {
+    model: 'claude-3-opus-20240229',
+    useMaxCompletionTokens: false,
+    supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'system'],
+    restrictions: {
+      maxTokens: 4096,
+      temperatureRange: [0, 1]
+    }
   }
 };
 
@@ -152,6 +183,19 @@ export function getModelParameterConfig(model: string): ModelParameterConfig {
       restrictions: {
         maxTokens: 32768,
         temperatureRange: [0, 2]
+      }
+    };
+  }
+  
+  // Claude models fallback
+  if (model.startsWith('claude-')) {
+    return {
+      model: model,
+      useMaxCompletionTokens: false,
+      supportedParams: ['model', 'messages', 'max_tokens', 'temperature', 'tools', 'system'],
+      restrictions: {
+        maxTokens: 8192,
+        temperatureRange: [0, 1]
       }
     };
   }

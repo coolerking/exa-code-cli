@@ -13,6 +13,7 @@ const AVAILABLE_PROVIDERS: ProviderInfo[] = [
   { id: 'groq', name: 'Groq Cloud', description: 'Fast inference with Groq models (default)' },
   { id: 'openai', name: 'OpenAI API', description: 'Official OpenAI models including o3-mini' },
   { id: 'azure', name: 'Azure OpenAI Service', description: 'Enterprise OpenAI models via Azure' },
+  { id: 'anthropic', name: 'Anthropic API', description: 'Claude models for advanced reasoning and conversation' },
   { id: 'openrouter', name: 'OpenRouter API', description: 'Access to multiple AI models via OpenRouter' },
   { id: 'ollama', name: 'Ollama Local', description: 'Local LLM server via Ollama' },
 ];
@@ -40,7 +41,7 @@ export default function ProviderModelSelector({
   });
   const [selectedModelIndex, setSelectedModelIndex] = useState(0);
 
-  const currentProviderModels = PROVIDER_MODELS[selectedProvider] || [];
+  const currentProviderModels = PROVIDER_MODELS[selectedProvider as keyof typeof PROVIDER_MODELS] || [];
 
   useInput((input, key) => {
     if (key.escape) {

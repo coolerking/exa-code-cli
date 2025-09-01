@@ -23,6 +23,7 @@ interface Config {
     groq?: ProviderConfig;
     openai?: ProviderConfig;
     azure?: ProviderConfig;
+    anthropic?: ProviderConfig;
     openrouter?: ProviderConfig;
     ollama?: ProviderConfig;
   };
@@ -306,6 +307,12 @@ export class ConfigManager {
         endpoint: 'AZURE_OPENAI_ENDPOINT',
         deploymentName: 'AZURE_OPENAI_DEPLOYMENT_NAME',
         apiVersion: 'AZURE_OPENAI_API_VERSION'
+      },
+      anthropic: {
+        apiKey: 'ANTHROPIC_API_KEY',
+        endpoint: '',
+        deploymentName: '',
+        apiVersion: ''
       },
       openrouter: {
         apiKey: 'OPENROUTER_API_KEY',

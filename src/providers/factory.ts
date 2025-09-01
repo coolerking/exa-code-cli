@@ -1,6 +1,6 @@
 import { IProvider } from './base.js';
 
-export type ProviderType = 'groq' | 'openai' | 'azure' | 'openrouter' | 'ollama';
+export type ProviderType = 'groq' | 'openai' | 'azure' | 'openrouter' | 'ollama' | 'anthropic';
 
 export class ProviderFactory {
   private static providers: Map<ProviderType, () => Promise<IProvider>> = new Map();
@@ -76,5 +76,11 @@ export async function registerAllProviders(): Promise<void> {
   ProviderFactory.registerProvider('ollama', async () => {
     const { OllamaProvider } = await import('./ollama.js');
     return new OllamaProvider();
+  });
+  
+  // Anthropic provider
+  ProviderFactory.registerProvider('anthropic', async () => {
+    const { AnthropicProvider } = await import('./anthropic.js');
+    return new AnthropicProvider();
   });
 }
