@@ -394,7 +394,7 @@ export const WEB_SEARCH_SCHEMA: ToolSchema = {
   type: 'function',
   function: {
     name: 'web_search',
-    description: 'Search the web for current information using multiple search providers. Cascades through Google -> Bing -> DuckDuckGo for best results. Example: {"query": "latest OpenAI API updates", "max_results": 5}',
+    description: 'Search the web for current information using multiple search providers. Defaults to Google -> Bing -> DuckDuckGo (configured providers only). If Google/Bing API keys are not set, they are skipped and DuckDuckGo is used automatically. Example: {"query": "latest OpenAI API updates", "max_results": 5}',
     parameters: {
       type: 'object',
       properties: {
@@ -412,7 +412,7 @@ export const WEB_SEARCH_SCHEMA: ToolSchema = {
         search_provider: {
           type: 'string',
           enum: ['auto', 'duckduckgo', 'google', 'bing'],
-          description: 'Search provider preference: auto (cascade fallback), duckduckgo (free), google (requires API key), bing (requires API key)',
+          description: 'Search provider preference: auto (cascade with configured providers), duckduckgo (free), google (requires API key), bing (requires API key). When set to auto and no API keys are configured, DuckDuckGo will be used.',
           default: 'auto'
         }
       },

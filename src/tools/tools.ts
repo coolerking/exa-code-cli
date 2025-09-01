@@ -941,6 +941,7 @@ export async function webSearchTool(query: string, maxResults?: number, searchPr
           resultsCount: searchResult.results.length,
           maxResults: normalizedMaxResults,
           totalResults: searchResult.totalResults,
+          attempts: searchResult.attempts,
         }
       },
       message

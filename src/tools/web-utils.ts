@@ -468,6 +468,15 @@ export const SEARCH_PROVIDERS: { [key: string]: SearchProvider } = {
   },
 };
 
+// プロバイダー設定検出ヘルパー
+function isGoogleConfigured(): boolean {
+  return Boolean(process.env.EXA_GOOGLE_SEARCH_API_KEY && process.env.EXA_GOOGLE_SEARCH_ENGINE_ID);
+}
+
+function isBingConfigured(): boolean {
+  return Boolean(process.env.EXA_BING_SEARCH_API_KEY);
+}
+
 export interface SearchResult {
   title: string;
   url: string;
@@ -482,6 +491,8 @@ export interface SearchResponse {
   provider: string;
   totalResults?: number;
   error?: string;
+  // 試行ログ（UX改善・デバッグ用）
+  attempts?: Array<{ provider: string; status: 'success' | 'fail'; reason?: string; results?: number }>;
 }
 
 /**
@@ -719,30 +730,61 @@ export async function webSearch(
     };
   }
 
-  const fallbackStrategy = process.env.EXA_SEARCH_FALLBACK_STRATEGY || 'cascade';
+  const fallbackStrategy = (process.env.EXA_SEARCH_FALLBACK_STRATEGY || 'cascade').toLowerCase();
   const trimmedQuery = query.trim();
   const clampedMaxResults = Math.max(1, Math.min(maxResults, 20)); // Limit between 1-20
 
-  // Determine provider order
-  let providers: string[];
-  if (preferredProvider && SEARCH_PROVIDERS[preferredProvider]) {
+  // 候補プロバイダー組み立て
+  const googleOK = isGoogleConfigured();
+  const bingOK = isBingConfigured();
+
+  let providers: string[] = [];
+  if (preferredProvider && preferredProvider !== 'auto' && SEARCH_PROVIDERS[preferredProvider]) {
     if (fallbackStrategy === 'strict') {
+      const needsKey = preferredProvider === 'google' || preferredProvider === 'bing';
+      const configured = preferredProvider === 'google' ? googleOK : preferredProvider === 'bing' ? bingOK : true;
+      if (needsKey && !configured) {
+        return {
+          success: false,
+          results: [],
+          query: trimmedQuery,
+          provider: preferredProvider,
+          error: `${SEARCH_PROVIDERS[preferredProvider].name} not configured`,
+          attempts: [{ provider: preferredProvider, status: 'fail', reason: 'not configured' }],
+        };
+      }
       providers = [preferredProvider];
     } else {
-      // Move preferred provider to front
-      providers = [preferredProvider, ...Object.keys(SEARCH_PROVIDERS).filter(p => p !== preferredProvider)];
+      const base = [preferredProvider, 'google', 'bing', 'duckduckgo'];
+      const seen = new Set<string>();
+      for (const p of base) {
+        if (!SEARCH_PROVIDERS[p] || seen.has(p)) continue;
+        if (p === 'google' && !googleOK) continue;
+        if (p === 'bing' && !bingOK) continue;
+        seen.add(p);
+        providers.push(p);
+      }
+      if (!providers.includes('duckduckgo')) providers.push('duckduckgo');
     }
   } else {
-    // Default cascade order: Google -> Bing -> DuckDuckGo
-    providers = ['google', 'bing', 'duckduckgo'];
+    if (googleOK || bingOK) {
+      const base = ['google', 'bing', 'duckduckgo'];
+      providers = base.filter(p => p === 'duckduckgo' || (p === 'google' ? googleOK : p === 'bing' ? bingOK : true));
+    } else {
+      providers = ['duckduckgo'];
+    }
+    if (fallbackStrategy === 'strict') {
+      providers = [providers[0]];
+    }
   }
 
+  const attempts: Array<{ provider: string; status: 'success' | 'fail'; reason?: string; results?: number }> = [];
   let lastError = '';
+  let zeroResultSuccess: SearchResponse | null = null;
 
   for (const providerName of providers) {
     try {
       let searchResult: SearchResponse;
-
       switch (providerName) {
         case 'google':
           searchResult = await searchGoogle(trimmedQuery, clampedMaxResults);
@@ -757,38 +799,59 @@ export async function webSearch(
           continue;
       }
 
-      if (searchResult.success && searchResult.results.length > 0) {
-        return searchResult;
-      } else if (searchResult.error) {
-        lastError = searchResult.error;
-        if (fallbackStrategy === 'strict') {
-          return searchResult;
+      if (searchResult.success) {
+        attempts.push({ provider: providerName, status: 'success', results: searchResult.results.length });
+        if (searchResult.results.length > 0) {
+          return { ...searchResult, attempts };
+        } else {
+          if (!zeroResultSuccess) zeroResultSuccess = { ...searchResult, attempts: [...attempts] };
+          if (fallbackStrategy === 'strict') {
+            return { ...searchResult, attempts };
+          }
+          continue;
         }
-        // Continue to next provider in cascade mode
+      } else {
+        const reason = searchResult.error || 'unknown error';
+        attempts.push({ provider: providerName, status: 'fail', reason });
+        lastError = reason;
+        if (fallbackStrategy === 'strict') {
+          return { ...searchResult, attempts };
+        }
+        continue;
       }
-
     } catch (error: any) {
-      lastError = `${providerName} provider failed: ${error.message}`;
+      const reason = `${providerName} provider failed: ${error.message || error}`;
+      attempts.push({ provider: providerName, status: 'fail', reason });
+      lastError = reason;
       if (fallbackStrategy === 'strict') {
         return {
           success: false,
           results: [],
           query: trimmedQuery,
           provider: providerName,
-          error: lastError,
+          error: reason,
+          attempts,
         };
       }
-      // Continue to next provider in cascade mode
+      continue;
     }
   }
 
-  // All providers failed
+  if (zeroResultSuccess) {
+    return { ...zeroResultSuccess, attempts };
+  }
+
+  const errorSummary = attempts
+    .filter(a => a.status === 'fail')
+    .map(a => `${a.provider}: ${a.reason}`)
+    .join('; ');
   return {
     success: false,
     results: [],
     query: trimmedQuery,
     provider: 'All',
-    error: lastError || 'All search providers failed',
+    error: errorSummary || lastError || 'All search providers failed',
+    attempts,
   };
 }
 

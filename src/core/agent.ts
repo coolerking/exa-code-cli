@@ -330,6 +330,7 @@ WEB ACCESS CAPABILITIES:
 - web_fetch: Retrieve and analyze content from URLs (news, documentation, articles)
 - web_search: Search the web for current information using multiple providers
 - Supports Google/Bing (with API keys) and DuckDuckGo (free) search
+- If Google/Bing API keys are not configured, the system automatically skips them and uses DuckDuckGo
 - Use for getting latest information, tutorials, documentation, or current events
 
 IMPLEMENTATION TASK RULES:
