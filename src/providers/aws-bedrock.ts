@@ -147,6 +147,81 @@ export class AWSBedrockProvider extends BaseProvider {
     };
   }
 
+  async validateCredentials(): Promise<{ valid: boolean; errors: string[] }> {
+    const errors: string[] = [];
+    
+    if (!this.client) {
+      errors.push('AWS Bedrock client not initialized');
+      return { valid: false, errors };
+    }
+    
+    try {
+      // Try to make a simple call to validate credentials
+      const dynamicImport = new Function('specifier', 'return import(specifier)');
+      const bedrockModule = await dynamicImport('@aws-sdk/client-bedrock-runtime');
+      const { InvokeModelCommand } = bedrockModule;
+      
+      // Test with a minimal valid request to check credentials
+      const testCommand = new InvokeModelCommand({
+        modelId: 'anthropic.claude-sonnet-4-v1',
+        contentType: 'application/json',
+        body: JSON.stringify({
+          max_tokens: 1,
+          messages: [{ role: 'user', content: [{ type: 'text', text: 'test' }] }]
+        })
+      });
+      
+      // This will fail due to minimal request, but we can catch auth-specific errors
+      await this.client.send(testCommand);
+      return { valid: true, errors: [] };
+    } catch (error: any) {
+      if (error && typeof error === 'object') {
+        if (error.name === 'UnrecognizedClientException' || 
+            error.name === 'InvalidSignatureException' ||
+            error.name === 'AccessDeniedException') {
+          errors.push('AWS credentials are invalid or insufficient permissions for Bedrock access');
+        } else if (error.name === 'CredentialsProviderError') {
+          errors.push('AWS credentials could not be loaded');
+        } else if (error.$metadata?.httpStatusCode === 403) {
+          errors.push('AWS credentials valid but insufficient permissions for Bedrock');
+        } else if (error.$metadata?.httpStatusCode === 401) {
+          errors.push('AWS credentials are invalid');
+        } else {
+          // If it's a validation error or other non-auth error, credentials are probably OK
+          return { valid: true, errors: [] };
+        }
+      } else {
+        errors.push(`Credential validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      
+      return { valid: false, errors };
+    }
+  }
+
+  async getConfigurationGuidance(): Promise<string[]> {
+    const guidance: string[] = [];
+    
+    const hasEnvCredentials = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY;
+    const hasRegion = process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION;
+    
+    if (!hasEnvCredentials) {
+      guidance.push('Set AWS credentials using environment variables:');
+      guidance.push('  export AWS_ACCESS_KEY_ID=your_access_key');
+      guidance.push('  export AWS_SECRET_ACCESS_KEY=your_secret_key');
+      guidance.push('Or configure AWS profile using: aws configure');
+    }
+    
+    if (!hasRegion) {
+      guidance.push('Set AWS region using environment variable:');
+      guidance.push('  export AWS_REGION=us-east-1');
+    }
+    
+    guidance.push('Ensure you have permission to use Amazon Bedrock in your AWS account');
+    guidance.push('Claude models may require additional access requests in AWS Console');
+    
+    return guidance;
+  }
+
   async initialize(config: BedrockConfig): Promise<void> {
     await super.initialize(config);
     

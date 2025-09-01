@@ -30,6 +30,55 @@ export class ProviderFactory {
     return Array.from(this.providers.keys());
   }
   
+  static isProviderRegistered(type: ProviderType): boolean {
+    return this.providers.has(type);
+  }
+  
+  static async validateProviderAvailability(type: ProviderType): Promise<{ available: boolean; errors: string[] }> {
+    const errors: string[] = [];
+    
+    if (!this.isProviderRegistered(type)) {
+      errors.push(`Provider '${type}' is not registered`);
+      return { available: false, errors };
+    }
+    
+    try {
+      // Try to create the provider to check if it's properly implemented
+      const provider = await this.createProvider(type);
+      
+      // Check if provider has required methods
+      if (!provider.name || !provider.displayName || !provider.models) {
+        errors.push(`Provider '${type}' is missing required properties`);
+      }
+      
+      // For AWS Bedrock, check if required packages are available
+      if (type === 'aws-bedrock') {
+        try {
+          const dynamicImport = new Function('specifier', 'return import(specifier)');
+          await dynamicImport('@aws-sdk/client-bedrock-runtime');
+          await dynamicImport('@aws-sdk/credential-providers');
+        } catch {
+          errors.push(`AWS Bedrock provider requires @aws-sdk/client-bedrock-runtime and @aws-sdk/credential-providers packages`);
+        }
+      }
+      
+      // For Anthropic, check if required package is available
+      if (type === 'anthropic') {
+        try {
+          const dynamicImport = new Function('specifier', 'return import(specifier)');
+          await dynamicImport('@anthropic-ai/sdk');
+        } catch {
+          errors.push(`Anthropic provider requires @anthropic-ai/sdk package`);
+        }
+      }
+      
+      return { available: errors.length === 0, errors };
+    } catch (error) {
+      errors.push(`Failed to initialize provider '${type}': ${error instanceof Error ? error.message : String(error)}`);
+      return { available: false, errors };
+    }
+  }
+  
   static async getAllProviders(): Promise<Map<ProviderType, IProvider>> {
     const providers = new Map<ProviderType, IProvider>();
     
