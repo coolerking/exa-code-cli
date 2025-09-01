@@ -9,6 +9,10 @@ interface ProviderConfig {
   deploymentName?: string; // For Azure OpenAI deployment name
   apiVersion?: string; // For Azure OpenAI API version
   defaultModel?: string;
+  // AWS Bedrock specific fields
+  region?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
 }
 
 interface Config {
@@ -26,6 +30,7 @@ interface Config {
     anthropic?: ProviderConfig;
     openrouter?: ProviderConfig;
     ollama?: ProviderConfig;
+    'aws-bedrock'?: ProviderConfig;
   };
 }
 
@@ -324,6 +329,12 @@ export class ConfigManager {
         apiKey: '',
         endpoint: 'OLLAMA_ENDPOINT',
         deploymentName: '',
+        apiVersion: ''
+      },
+      'aws-bedrock': {
+        apiKey: 'AWS_ACCESS_KEY_ID',
+        endpoint: 'AWS_REGION',
+        deploymentName: 'AWS_SECRET_ACCESS_KEY',
         apiVersion: ''
       }
     };

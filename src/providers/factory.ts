@@ -1,6 +1,6 @@
 import { IProvider } from './base.js';
 
-export type ProviderType = 'groq' | 'openai' | 'azure' | 'openrouter' | 'ollama' | 'anthropic';
+export type ProviderType = 'groq' | 'openai' | 'azure' | 'openrouter' | 'ollama' | 'anthropic' | 'aws-bedrock';
 
 export class ProviderFactory {
   private static providers: Map<ProviderType, () => Promise<IProvider>> = new Map();
@@ -82,5 +82,11 @@ export async function registerAllProviders(): Promise<void> {
   ProviderFactory.registerProvider('anthropic', async () => {
     const { AnthropicProvider } = await import('./anthropic.js');
     return new AnthropicProvider();
+  });
+  
+  // AWS Bedrock provider
+  ProviderFactory.registerProvider('aws-bedrock', async () => {
+    const { AWSBedrockProvider } = await import('./aws-bedrock.js');
+    return new AWSBedrockProvider();
   });
 }
