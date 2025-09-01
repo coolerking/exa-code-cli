@@ -36,6 +36,12 @@ export const PROVIDER_MODELS = {
     { id: 'gpt-oss:20b', name: 'GPT OSS 20B', description: 'Medium-sized capable model' },
     { id: 'gpt-oss:120b', name: 'GPT OSS 120B', description: 'Large high-performance model' },
   ] as ModelInfo[],
+
+  anthropic: [
+    { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Most capable model for complex tasks (default)' },
+    { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Fast and cost-effective model' },
+    { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Most powerful model for the most complex tasks' },
+  ] as ModelInfo[],
 } as const;
 
 // Default models for each provider
@@ -45,4 +51,5 @@ export const DEFAULT_MODELS = {
   azure: 'o3-mini',
   openrouter: 'openai/gpt-oss-120b',
   ollama: 'gemma3:270m',
+  anthropic: 'claude-3-5-sonnet-20241022',
 } as const;

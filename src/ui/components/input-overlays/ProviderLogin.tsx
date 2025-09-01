@@ -43,6 +43,14 @@ const PROVIDER_CONFIGS: ProviderInfo[] = [
     ]
   },
   {
+    id: 'anthropic',
+    name: 'Anthropic API',
+    description: 'Get your API key from https://console.anthropic.com/keys',
+    fields: [
+      { key: 'apiKey', label: 'API Key', placeholder: 'sk-ant-...', required: true }
+    ]
+  },
+  {
     id: 'openrouter',
     name: 'OpenRouter API',
     description: 'Get your API key from https://openrouter.ai/keys',
