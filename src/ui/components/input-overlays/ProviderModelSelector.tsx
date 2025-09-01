@@ -14,6 +14,7 @@ const AVAILABLE_PROVIDERS: ProviderInfo[] = [
   { id: 'openai', name: 'OpenAI API', description: 'Official OpenAI models including o3-mini' },
   { id: 'azure', name: 'Azure OpenAI Service', description: 'Enterprise OpenAI models via Azure' },
   { id: 'anthropic', name: 'Anthropic API', description: 'Claude models for advanced reasoning and conversation' },
+  { id: 'aws-bedrock', name: 'AWS Bedrock', description: 'AWS Bedrock経由でClaude models利用 - 企業向けセキュア接続' },
   { id: 'openrouter', name: 'OpenRouter API', description: 'Access to multiple AI models via OpenRouter' },
   { id: 'ollama', name: 'Ollama Local', description: 'Local LLM server via Ollama' },
 ];
