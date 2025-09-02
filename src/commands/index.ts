@@ -6,6 +6,7 @@ import { clearCommand } from './definitions/clear.js';
 import { initCommand } from './definitions/init.js';
 import { reasoningCommand } from './definitions/reasoning.js';
 import { statsCommand } from './definitions/stats.js';
+import { mcpCommand } from './definitions/mcp.js';
 
 const availableCommands: CommandDefinition[] = [
   helpCommand,
@@ -15,6 +16,7 @@ const availableCommands: CommandDefinition[] = [
   initCommand,
   reasoningCommand,
   statsCommand,
+  mcpCommand,
 ];
 
 export function getAvailableCommands(): CommandDefinition[] {
@@ -34,6 +36,9 @@ export function handleSlashCommand(
   const spaceIndex = fullCommand.indexOf(' ');
   const cmd = spaceIndex > -1 ? fullCommand.substring(0, spaceIndex).toLowerCase() : fullCommand.toLowerCase();
   
+  // Extract arguments
+  const args = spaceIndex > -1 ? fullCommand.substring(spaceIndex + 1).trim().split(/\s+/).filter(arg => arg.length > 0) : [];
+  
   const commandDef = getAvailableCommands().find(c => c.command === cmd);
   
   // Add user message for the command
@@ -43,7 +48,9 @@ export function handleSlashCommand(
   });
   
   if (commandDef) {
-    commandDef.handler(context);
+    // Add args to context
+    const contextWithArgs = { ...context, args };
+    commandDef.handler(contextWithArgs);
   }
 }
 
