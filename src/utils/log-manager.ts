@@ -160,6 +160,42 @@ export class LogManager {
   getLogDirPath(): string {
     return this.logDir;
   }
+
+  /**
+   * Temporarily override console methods to capture MCP server output
+   */
+  captureConsoleOutput(serverName: string, callback: () => Promise<void>): Promise<void> {
+    const originalLog = console.log;
+    const originalError = console.error;
+    const originalWarn = console.warn;
+
+    // Override console methods
+    console.log = (...args: any[]) => {
+      const message = args.join(' ');
+      if (this.shouldRedirectToFile(message)) {
+        this.logMCPOutput(serverName, message);
+      } else {
+        originalLog(...args);
+      }
+    };
+
+    console.error = (...args: any[]) => {
+      const message = args.join(' ');
+      this.logMCPError(serverName, message);
+    };
+
+    console.warn = (...args: any[]) => {
+      const message = args.join(' ');
+      this.logMCPInfo(serverName, `WARN: ${message}`);
+    };
+
+    return callback().finally(() => {
+      // Restore original console methods
+      console.log = originalLog;
+      console.error = originalError;
+      console.warn = originalWarn;
+    });
+  }
 }
 
 // Global instance

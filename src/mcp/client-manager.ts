@@ -2,17 +2,13 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { 
-  CallToolRequest, 
   CallToolResult, 
   CallToolResultSchema,
-  ListToolsRequest, 
-  ListToolsResult,
   ListToolsResultSchema,
   Tool 
 } from '@modelcontextprotocol/sdk/types.js';
 import { ConfigManager, MCPServerConfig } from '../utils/local-settings.js';
-import { spawn, ChildProcess } from 'child_process';
-import { handleMCPError, getMCPErrorHandler } from './error-handling.js';
+import { handleMCPError } from './error-handling.js';
 import { getLogManager } from '../utils/log-manager.js';
 
 export interface MCPClientInfo {
@@ -58,7 +54,11 @@ export class MCPClientManager {
    * Connect to a specific MCP server
    */
   private async connectToServer(name: string, config: MCPServerConfig): Promise<void> {
+    const logManager = getLogManager();
+    
     try {
+      // Use console capture to redirect MCP server logs during connection
+      await logManager.captureConsoleOutput(name, async () => {
       let client: Client;
       let transport: StdioClientTransport | SSEClientTransport;
 
@@ -155,9 +155,9 @@ export class MCPClientManager {
       // Log successful connection (keep on console - important status)
       console.log(`✓ Connected to MCP server '${name}' (${clientInfo.tools.length} tools available)`);
       
-      // Also log to file for record keeping
-      const logManager = getLogManager();
-      logManager.logInfo(`Connected to MCP server '${name}' with ${clientInfo.tools.length} tools`);
+        // Also log to file for record keeping  
+        logManager.logInfo(`Connected to MCP server '${name}' with ${clientInfo.tools.length} tools`);
+      });
     } catch (error) {
       const clientInfo: MCPClientInfo = {
         name,
@@ -171,7 +171,6 @@ export class MCPClientManager {
       this.clients.set(name, clientInfo);
       
       // Log connection error to file
-      const logManager = getLogManager();
       logManager.logMCPError(name, `Connection failed: ${error instanceof Error ? error.message : String(error)}`);
       
       throw error;
