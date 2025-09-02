@@ -11,6 +11,12 @@ interface MCPStatus {
   totalServers: number;
   totalTools: number;
   hasErrors: boolean;
+  serverDetails: Array<{
+    name: string;
+    connected: boolean;
+    toolCount: number;
+    transport: string;
+  }>;
 }
 
 export default function MCPIndicator({ showDetailed = false }: MCPIndicatorProps) {
@@ -18,7 +24,8 @@ export default function MCPIndicator({ showDetailed = false }: MCPIndicatorProps
     connectedServers: 0,
     totalServers: 0,
     totalTools: 0,
-    hasErrors: false
+    hasErrors: false,
+    serverDetails: []
   });
 
   const [isInitialized, setIsInitialized] = useState(false);
@@ -33,11 +40,19 @@ export default function MCPIndicator({ showDetailed = false }: MCPIndicatorProps
         const totalTools = serverStatus.reduce((sum, s) => sum + s.toolCount, 0);
         const hasErrors = serverStatus.some(s => !s.connected);
         
+        const serverDetails = serverStatus.map(s => ({
+          name: s.name,
+          connected: s.connected,
+          toolCount: s.toolCount,
+          transport: s.config.transport
+        }));
+        
         setMcpStatus({
           connectedServers,
           totalServers: serverStatus.length,
           totalTools,
-          hasErrors
+          hasErrors,
+          serverDetails
         });
 
         if (!isInitialized && serverStatus.length > 0) {
@@ -53,7 +68,8 @@ export default function MCPIndicator({ showDetailed = false }: MCPIndicatorProps
           connectedServers: 0,
           totalServers: 0,
           totalTools: 0,
-          hasErrors: false
+          hasErrors: false,
+          serverDetails: []
         });
       }
     };
@@ -88,6 +104,22 @@ export default function MCPIndicator({ showDetailed = false }: MCPIndicatorProps
             </Text>
           )}
         </Box>
+        
+        {mcpStatus.serverDetails.length > 0 && (
+          <Box flexDirection="column" marginTop={1}>
+            {mcpStatus.serverDetails.map((server, index) => (
+              <Box key={server.name}>
+                <Text color={server.connected ? 'green' : 'red'} dimColor>
+                  {server.connected ? '●' : '○'} {server.name}
+                </Text>
+                <Text color="gray" dimColor>
+                  {' '}({server.transport}) {server.toolCount} tools
+                </Text>
+              </Box>
+            ))}
+          </Box>
+        )}
+        
         {mcpStatus.hasErrors && (
           <Text color="yellow" dimColor>
             Use /mcp health to diagnose connection issues

@@ -2,6 +2,8 @@ import { executeTool } from '../tools/tools.js';
 import { validateReadBeforeEdit, getReadBeforeEditError } from '../tools/validators.js';
 import { ALL_TOOL_SCHEMAS, DANGEROUS_TOOLS, APPROVAL_REQUIRED_TOOLS } from '../tools/tool-schemas.js';
 import { ConfigManager } from '../utils/local-settings.js';
+import { getMCPClientManager } from '../mcp/client-manager.js';
+import { getMCPToolsSummary, initializeMCPTools } from '../mcp/tools-integration.js';
 import { ProviderFactory, ProviderType, registerAllProviders } from '../providers/factory.js';
 import { IProvider } from '../providers/base.js';
 import { DEFAULT_MODELS } from '../providers/models.js';
@@ -98,6 +100,15 @@ export class Agent {
   ): Promise<Agent> {
     // Ensure providers are registered
     await registerAllProviders();
+    
+    // Initialize MCP tools
+    try {
+      await initializeMCPTools();
+    } catch (error) {
+      if (debug) {
+        console.warn('Failed to initialize MCP tools:', error);
+      }
+    }
     
     // Check for default model in config if model not explicitly provided
     const configManager = new ConfigManager();
@@ -308,9 +319,18 @@ export class Agent {
   private buildDefaultSystemMessage(): string {
     const providerName = this.provider?.displayName || this.currentProviderType;
     
+    // Get MCP tools information
+    const mcpTools = this.getMCPToolsInfo();
+    
     // Use lightweight system message for Ollama models (especially small ones)
     if (this.currentProviderType === 'ollama') {
-      return `You are a coding assistant powered by ${this.model} on ${providerName}. When asked about your identity, identify yourself as a coding assistant running on the ${this.model} model via ${providerName}.`;
+      let baseMessage = `You are a coding assistant powered by ${this.model} on ${providerName}. When asked about your identity, identify yourself as a coding assistant running on the ${this.model} model via ${providerName}.`;
+      
+      if (mcpTools) {
+        baseMessage += `\n\nMCP TOOLS AVAILABLE:\n${mcpTools}`;
+      }
+      
+      return baseMessage;
     }
     
     // Full system message for other providers
@@ -371,7 +391,44 @@ Be direct and efficient.
 
 Don't generate markdown tables.
 
-When asked about your identity, you should identify yourself as a coding assistant running on the ${this.model} model via ${providerName}.`;
+When asked about your identity, you should identify yourself as a coding assistant running on the ${this.model} model via ${providerName}.
+
+${mcpTools ? `\nMCP TOOLS AVAILABLE:\n${mcpTools}` : ''}`;
+  }
+
+  private getMCPToolsInfo(): string | null {
+    try {
+      const mcpToolsSummary = getMCPToolsSummary();
+      
+      if (mcpToolsSummary.length === 0) {
+        return null;
+      }
+
+      let mcpInfo = `You have access to ${mcpToolsSummary.length} MCP tools from external servers:\n`;
+      
+      // Group tools by server
+      const toolsByServer = new Map<string, typeof mcpToolsSummary>();
+      for (const tool of mcpToolsSummary) {
+        if (!toolsByServer.has(tool.serverName)) {
+          toolsByServer.set(tool.serverName, []);
+        }
+        toolsByServer.get(tool.serverName)!.push(tool);
+      }
+
+      for (const [serverName, tools] of toolsByServer.entries()) {
+        mcpInfo += `\n${serverName} server (${tools.length} tools):\n`;
+        for (const tool of tools) {
+          mcpInfo += `- ${tool.mcpToolName}: ${tool.description}\n`;
+        }
+      }
+
+      mcpInfo += `\nMCP tools are called automatically like built-in tools. Use them when they provide relevant capabilities for the user's request.`;
+      
+      return mcpInfo;
+    } catch (error) {
+      // Silently handle errors - MCP tools are optional
+      return null;
+    }
   }
 
   public setToolCallbacks(callbacks: {
