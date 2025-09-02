@@ -13,6 +13,7 @@ import {
 import { ConfigManager, MCPServerConfig } from '../utils/local-settings.js';
 import { spawn, ChildProcess } from 'child_process';
 import { handleMCPError, getMCPErrorHandler } from './error-handling.js';
+import { getLogManager } from '../utils/log-manager.js';
 
 export interface MCPClientInfo {
   name: string;
@@ -85,8 +86,17 @@ export class MCPClientManager {
           transport = new StdioClientTransport({
             command: config.command,
             args: args,
-            env
+            env,
+            stderr: 'pipe'  // Enable stderr capture for log redirection
           });
+
+          // Capture and redirect stderr output from MCP server
+          const logManager = getLogManager();
+          if (transport.stderr) {
+            transport.stderr.on('data', (data: Buffer) => {
+              logManager.filterAndRedirectOutput(name, data.toString());
+            });
+          }
           break;
 
         case 'sse':
@@ -142,7 +152,12 @@ export class MCPClientManager {
 
       this.clients.set(name, clientInfo);
 
+      // Log successful connection (keep on console - important status)
       console.log(`✓ Connected to MCP server '${name}' (${clientInfo.tools.length} tools available)`);
+      
+      // Also log to file for record keeping
+      const logManager = getLogManager();
+      logManager.logInfo(`Connected to MCP server '${name}' with ${clientInfo.tools.length} tools`);
     } catch (error) {
       const clientInfo: MCPClientInfo = {
         name,
@@ -154,6 +169,11 @@ export class MCPClientManager {
       };
 
       this.clients.set(name, clientInfo);
+      
+      // Log connection error to file
+      const logManager = getLogManager();
+      logManager.logMCPError(name, `Connection failed: ${error instanceof Error ? error.message : String(error)}`);
+      
       throw error;
     }
   }
