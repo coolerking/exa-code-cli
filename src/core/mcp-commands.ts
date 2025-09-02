@@ -69,9 +69,14 @@ export function createMCPCommand(): Command {
         };
 
         if (options.transport === 'stdio') {
-          serverConfig.command = command;
+          // Standard MCP format: command as string, args as array
+          serverConfig.command = command[0];  // First argument is the command
+          const allArgs = command.slice(1);   // Remaining arguments
           if (options.args && options.args.length > 0) {
-            serverConfig.args = options.args;
+            allArgs.push(...options.args);    // Add additional args
+          }
+          if (allArgs.length > 0) {
+            serverConfig.args = allArgs;
           }
         } else {
           serverConfig.url = options.url;
@@ -91,7 +96,7 @@ export function createMCPCommand(): Command {
         console.log(chalk.green(`✓ MCP server '${name}' added successfully`));
         console.log(chalk.gray(`  Transport: ${serverConfig.transport}`));
         if (serverConfig.command) {
-          console.log(chalk.gray(`  Command: ${serverConfig.command.join(' ')}`));
+          console.log(chalk.gray(`  Command: ${serverConfig.command}${serverConfig.args ? ' ' + serverConfig.args.join(' ') : ''}`));
         }
         if (serverConfig.url) {
           console.log(chalk.gray(`  URL: ${serverConfig.url}`));
@@ -128,7 +133,7 @@ export function createMCPCommand(): Command {
           if (options.verbose) {
             console.log(chalk.gray(`  Transport: ${config.transport}`));
             if (config.command) {
-              console.log(chalk.gray(`  Command: ${config.command.join(' ')}`));
+              console.log(chalk.gray(`  Command: ${config.command}${config.args ? ' ' + config.args.join(' ') : ''}`));
             }
             if (config.args) {
               console.log(chalk.gray(`  Args: ${config.args.join(' ')}`));
@@ -170,7 +175,7 @@ export function createMCPCommand(): Command {
         console.log(chalk.gray(`Transport: ${server.transport}`));
         
         if (server.command) {
-          console.log(chalk.gray(`Command: ${server.command.join(' ')}`));
+          console.log(chalk.gray(`Command: ${server.command}${server.args ? ' ' + server.args.join(' ') : ''}`));
         }
         if (server.args) {
           console.log(chalk.gray(`Args: ${server.args.join(' ')}`));

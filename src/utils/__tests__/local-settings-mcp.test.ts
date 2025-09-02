@@ -53,8 +53,8 @@ test('addMCPServer adds server configuration correctly', t => {
 
   const serverConfig: MCPServerConfig = {
     transport: 'stdio',
-    command: ['node', 'server.js'],
-    args: ['--verbose'],
+    command: 'node',
+    args: ['server.js', '--verbose'],
     env: { NODE_ENV: 'development' },
     timeout: 5000
   };
@@ -64,8 +64,8 @@ test('addMCPServer adds server configuration correctly', t => {
   const retrievedServer = manager.getMCPServer('test-server');
   t.truthy(retrievedServer);
   t.is(retrievedServer!.transport, 'stdio');
-  t.deepEqual(retrievedServer!.command, ['node', 'server.js']);
-  t.deepEqual(retrievedServer!.args, ['--verbose']);
+  t.is(retrievedServer!.command, 'node');
+  t.deepEqual(retrievedServer!.args, ['server.js', '--verbose']);
   t.deepEqual(retrievedServer!.env, { NODE_ENV: 'development' });
   t.is(retrievedServer!.timeout, 5000);
   t.is(retrievedServer!.enabled, true); // Should be enabled by default
@@ -95,7 +95,8 @@ test('removeMCPServer removes server correctly', t => {
 
   const serverConfig: MCPServerConfig = {
     transport: 'stdio',
-    command: ['node', 'server.js']
+    command: 'node',
+    args: ['server.js']
   };
 
   manager.addMCPServer('temp-server', serverConfig);
@@ -121,7 +122,8 @@ test('enableMCPServer and disableMCPServer work correctly', t => {
 
   const serverConfig: MCPServerConfig = {
     transport: 'stdio',
-    command: ['node', 'server.js']
+    command: 'node',
+    args: ['server.js']
   };
 
   manager.addMCPServer('toggle-server', serverConfig);
@@ -184,7 +186,8 @@ test('getMCPServerList returns list of servers correctly', t => {
   // Add servers
   const server1Config: MCPServerConfig = {
     transport: 'stdio',
-    command: ['node', 'server1.js']
+    command: 'node',
+    args: ['server1.js']
   };
   const server2Config: MCPServerConfig = {
     transport: 'http',
@@ -203,7 +206,8 @@ test('getMCPServerList returns list of servers correctly', t => {
   const server1Entry = serverList.find(s => s.name === 'server1');
   t.truthy(server1Entry);
   t.is(server1Entry!.config.transport, 'stdio');
-  t.deepEqual(server1Entry!.config.command, ['node', 'server1.js']);
+  t.is(server1Entry!.config.command, 'node');
+  t.deepEqual(server1Entry!.config.args, ['server1.js']);
 
   const server2Entry = serverList.find(s => s.name === 'server2');
   t.truthy(server2Entry);
@@ -218,7 +222,8 @@ test('multiple servers configuration is maintained correctly', t => {
   // Add multiple servers
   manager.addMCPServer('server1', {
     transport: 'stdio',
-    command: ['node', 'server1.js']
+    command: 'node',
+    args: ['server1.js']
   });
 
   manager.addMCPServer('server2', {
@@ -267,7 +272,8 @@ test('error handling for invalid operations', t => {
   t.throws(() => {
     manager.addMCPServer('error-server', {
       transport: 'stdio',
-      command: ['node', 'server.js']
+      command: 'node',
+      args: ['server.js']
     });
   }, { message: /Failed to add MCP server 'error-server'/ });
 

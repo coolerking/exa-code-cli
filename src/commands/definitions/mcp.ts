@@ -177,7 +177,7 @@ function showMCPList(addMessage: (message: any) => void): void {
         listMessage += `   Transport: ${server.config.transport}`;
         
         if (server.config.command) {
-          listMessage += `, Command: ${server.config.command.join(' ')}`;
+          listMessage += `, Command: ${server.config.command}${server.config.args ? ' ' + server.config.args.join(' ') : ''}`;
         }
         if (server.config.url) {
           listMessage += `, URL: ${server.config.url}`;
@@ -231,7 +231,7 @@ function showMCPServers(addMessage: (message: any) => void): void {
         serversMessage += `- **Transport**: ${server.config.transport}\n`;
         
         if (server.config.command) {
-          serversMessage += `- **Command**: ${server.config.command.join(' ')}\n`;
+          serversMessage += `- **Command**: ${server.config.command}${server.config.args ? ' ' + server.config.args.join(' ') : ''}\n`;
         }
         if (server.config.url) {
           serversMessage += `- **URL**: ${server.config.url}\n`;

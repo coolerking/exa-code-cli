@@ -17,8 +17,8 @@ interface ProviderConfig {
 
 export interface MCPServerConfig {
   transport: 'stdio' | 'sse' | 'http';
-  command?: string[];
-  args?: string[];
+  command?: string;  // Standard MCP format: command as string
+  args?: string[];   // Standard MCP format: args as array
   url?: string;
   env?: Record<string, string>;
   enabled?: boolean;

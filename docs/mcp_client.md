@@ -11,11 +11,22 @@ MCPクライアント機能により、exa-code-cliは外部のMCPサーバー�
 - **自動統合**: AIが必要に応じてMCPツールを自動実行
 - **リアルタイム監視**: 接続状態・エラー・ツール数の表示
 
+### MCP設定形式
+
+exa-code-cliは**標準MCP設定形式**に対応しています：
+
+- **`command`**: 実行コマンド（文字列）
+- **`args`**: コマンド引数（配列）
+
+この形式はClaude Code CLI・VS Code等で使用される標準仕様です。
+
 ## 1. 新規MCPサーバーの追加
 
 ### 1.1. ~/.exa/local-settings.json での設定
 
 設定ファイルに直接MCPサーバーを追加する場合：
+
+**注意**: 標準MCP形式では`command`は文字列、引数は`args`配列で指定します。
 
 ```json
 {
@@ -23,8 +34,8 @@ MCPクライアント機能により、exa-code-cliは外部のMCPサーバー�
     "servers": {
       "my-server": {
         "transport": "stdio",
-        "command": ["node", "/path/to/server.js"],
-        "args": ["--verbose"],
+        "command": "node",
+        "args": ["/path/to/server.js", "--verbose"],
         "env": {
           "NODE_ENV": "production",
           "API_KEY": "your-api-key"
@@ -45,12 +56,34 @@ MCPクライアント機能により、exa-code-cliは外部のMCPサーバー�
 }
 ```
 
+**実使用例**:
+```json
+{
+  "mcp": {
+    "servers": {
+      "perplexity-ask": {
+        "transport": "stdio",
+        "command": "npx",
+        "args": ["-y", "server-perplexity-ask"],
+        "env": {
+          "PERPLEXITY_API_KEY": "your-perplexity-api-key"
+        }
+      }
+    }
+  }
+}
+```
+
 ### 1.2. exa mcp コマンドでの追加
 
 #### stdio transport（ローカルプロセス）
 ```bash
 # 基本的な追加
 exa mcp add my-server node /path/to/server.js
+
+# 実用例: perplexity-ask
+exa mcp add perplexity-ask npx -y server-perplexity-ask \
+  --env PERPLEXITY_API_KEY=your-perplexity-api-key
 
 # オプション付き追加
 exa mcp add my-server node /path/to/server.js \
@@ -258,8 +291,8 @@ exa --debug
     "servers": {
       "file-manager": {
         "transport": "stdio",
-        "command": ["python", "/opt/mcp-servers/file-manager.py"],
-        "args": ["--safe-mode"],
+        "command": "python",
+        "args": ["/opt/mcp-servers/file-manager.py", "--safe-mode"],
         "env": {
           "PYTHONPATH": "/opt/mcp-servers",
           "LOG_LEVEL": "info"

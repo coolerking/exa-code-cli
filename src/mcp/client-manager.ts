@@ -4,8 +4,10 @@ import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { 
   CallToolRequest, 
   CallToolResult, 
+  CallToolResultSchema,
   ListToolsRequest, 
   ListToolsResult,
+  ListToolsResultSchema,
   Tool 
 } from '@modelcontextprotocol/sdk/types.js';
 import { ConfigManager, MCPServerConfig } from '../utils/local-settings.js';
@@ -61,7 +63,7 @@ export class MCPClientManager {
 
       switch (config.transport) {
         case 'stdio':
-          if (!config.command || config.command.length === 0) {
+          if (!config.command || config.command.trim() === '') {
             throw new Error('Command is required for stdio transport');
           }
 
@@ -81,8 +83,8 @@ export class MCPClientManager {
           }
 
           transport = new StdioClientTransport({
-            command: config.command[0],
-            args: config.command.slice(1).concat(args),
+            command: config.command,
+            args: args,
             env
           });
           break;
@@ -128,7 +130,7 @@ export class MCPClientManager {
       ]);
 
       // Get available tools
-      const toolsResult = await client.request({ method: 'tools/list' }, {} as any) as any;
+      const toolsResult = await client.request({ method: 'tools/list' }, ListToolsResultSchema);
 
       const clientInfo: MCPClientInfo = {
         name,
@@ -251,7 +253,7 @@ export class MCPClientManager {
           name: toolName,
           arguments: arguments_
         }
-      }, {} as any) as any;
+      }, CallToolResultSchema);
 
       return result;
     } catch (error) {

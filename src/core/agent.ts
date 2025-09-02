@@ -3,7 +3,7 @@ import { validateReadBeforeEdit, getReadBeforeEditError } from '../tools/validat
 import { ALL_TOOL_SCHEMAS, DANGEROUS_TOOLS, APPROVAL_REQUIRED_TOOLS } from '../tools/tool-schemas.js';
 import { ConfigManager } from '../utils/local-settings.js';
 import { getMCPClientManager } from '../mcp/client-manager.js';
-import { getMCPToolsSummary, initializeMCPTools } from '../mcp/tools-integration.js';
+import { getMCPToolsSummary, getMCPToolSchemas, initializeMCPTools } from '../mcp/tools-integration.js';
 import { ProviderFactory, ProviderType, registerAllProviders } from '../providers/factory.js';
 import { IProvider } from '../providers/base.js';
 import { DEFAULT_MODELS } from '../providers/models.js';
@@ -431,6 +431,27 @@ ${mcpTools ? `\nMCP TOOLS AVAILABLE:\n${mcpTools}` : ''}`;
     }
   }
 
+  private getAllToolSchemas(): any[] {
+    try {
+      const mcpToolSchemas = getMCPToolSchemas();
+      
+      // Convert MCP tool schemas to the format expected by AI providers
+      const convertedMCPSchemas = mcpToolSchemas.map(mcpTool => ({
+        type: 'function',
+        function: {
+          name: mcpTool.name,
+          description: mcpTool.description,
+          parameters: mcpTool.parameters
+        }
+      }));
+      
+      return [...ALL_TOOL_SCHEMAS, ...convertedMCPSchemas];
+    } catch (error) {
+      console.warn('Error getting MCP tool schemas:', error);
+      return ALL_TOOL_SCHEMAS;
+    }
+  }
+
   public setToolCallbacks(callbacks: {
     onToolStart?: (name: string, args: Record<string, any>) => void;
     onToolEnd?: (name: string, result: any) => void;
@@ -554,7 +575,7 @@ ${mcpTools ? `\nMCP TOOLS AVAILABLE:\n${mcpTools}` : ''}`;
           
           const response = await this.provider.chat(this.messages, {
             model: this.model,
-            tools: ALL_TOOL_SCHEMAS,
+            tools: this.getAllToolSchemas(),
             toolChoice: 'auto',
             temperature: this.temperature,
             maxTokens: 8000
