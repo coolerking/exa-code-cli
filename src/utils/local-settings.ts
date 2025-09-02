@@ -15,6 +15,22 @@ interface ProviderConfig {
   secretAccessKey?: string;
 }
 
+export interface MCPServerConfig {
+  transport: 'stdio' | 'sse' | 'http';
+  command?: string[];
+  args?: string[];
+  url?: string;
+  env?: Record<string, string>;
+  enabled?: boolean;
+  timeout?: number;
+}
+
+export interface MCPConfig {
+  servers?: Record<string, MCPServerConfig>;
+  globalTimeout?: number;
+  debugMode?: boolean;
+}
+
 interface Config {
   // Legacy fields for backward compatibility
   groqApiKey?: string;
@@ -32,6 +48,9 @@ interface Config {
     ollama?: ProviderConfig;
     'aws-bedrock'?: ProviderConfig;
   };
+  
+  // MCP configuration
+  mcp?: MCPConfig;
 }
 
 const CONFIG_DIR = '.exa'; // In home directory
@@ -408,5 +427,127 @@ export class ConfigManager {
     } catch (error) {
       console.warn('Failed to clear proxy:', error);
     }
+  }
+
+  // MCP configuration methods
+  public getMCPConfig(): MCPConfig {
+    const config = this.readConfig();
+    return config.mcp || {};
+  }
+
+  public getMCPServers(): Record<string, MCPServerConfig> {
+    const mcpConfig = this.getMCPConfig();
+    return mcpConfig.servers || {};
+  }
+
+  public getMCPServer(serverName: string): MCPServerConfig | null {
+    const servers = this.getMCPServers();
+    return servers[serverName] || null;
+  }
+
+  public addMCPServer(serverName: string, serverConfig: MCPServerConfig): void {
+    try {
+      const config = this.readConfig();
+      if (!config.mcp) {
+        config.mcp = {};
+      }
+      if (!config.mcp.servers) {
+        config.mcp.servers = {};
+      }
+      config.mcp.servers[serverName] = {
+        enabled: true,
+        ...serverConfig
+      };
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to add MCP server '${serverName}': ${error}`);
+    }
+  }
+
+  public removeMCPServer(serverName: string): boolean {
+    try {
+      const config = this.readConfig();
+      if (config.mcp?.servers?.[serverName]) {
+        delete config.mcp.servers[serverName];
+        
+        // Clean up empty servers object
+        if (Object.keys(config.mcp.servers).length === 0) {
+          delete config.mcp.servers;
+        }
+        
+        // Clean up empty mcp object
+        if (config.mcp && Object.keys(config.mcp).length === 0) {
+          delete config.mcp;
+        }
+        
+        this.writeConfig(config);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      throw new Error(`Failed to remove MCP server '${serverName}': ${error}`);
+    }
+  }
+
+  public enableMCPServer(serverName: string): boolean {
+    try {
+      const config = this.readConfig();
+      if (config.mcp?.servers?.[serverName]) {
+        config.mcp.servers[serverName].enabled = true;
+        this.writeConfig(config);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      throw new Error(`Failed to enable MCP server '${serverName}': ${error}`);
+    }
+  }
+
+  public disableMCPServer(serverName: string): boolean {
+    try {
+      const config = this.readConfig();
+      if (config.mcp?.servers?.[serverName]) {
+        config.mcp.servers[serverName].enabled = false;
+        this.writeConfig(config);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      throw new Error(`Failed to disable MCP server '${serverName}': ${error}`);
+    }
+  }
+
+  public setMCPGlobalTimeout(timeout: number): void {
+    try {
+      const config = this.readConfig();
+      if (!config.mcp) {
+        config.mcp = {};
+      }
+      config.mcp.globalTimeout = timeout;
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to set MCP global timeout: ${error}`);
+    }
+  }
+
+  public setMCPDebugMode(enabled: boolean): void {
+    try {
+      const config = this.readConfig();
+      if (!config.mcp) {
+        config.mcp = {};
+      }
+      config.mcp.debugMode = enabled;
+      this.writeConfig(config);
+    } catch (error) {
+      throw new Error(`Failed to set MCP debug mode: ${error}`);
+    }
+  }
+
+  public getMCPServerList(): Array<{name: string; config: MCPServerConfig}> {
+    const servers = this.getMCPServers();
+    return Object.entries(servers).map(([name, config]) => ({
+      name,
+      config
+    }));
   }
 }
