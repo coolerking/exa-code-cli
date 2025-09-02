@@ -27,6 +27,10 @@ export const mcpCommand: CommandDefinition = {
         showMCPServers(addMessage);
         break;
       
+      case 'list':
+        showMCPList(addMessage);
+        break;
+      
       case 'health':
         showMCPHealth(addMessage);
         break;
@@ -142,6 +146,61 @@ function showMCPTools(addMessage: (message: any) => void): void {
     addMessage({
       role: 'system',
       content: `❌ Error retrieving MCP tools: ${error instanceof Error ? error.message : String(error)}`
+    });
+  }
+}
+
+function showMCPList(addMessage: (message: any) => void): void {
+  try {
+    const mcpManager = getMCPClientManager();
+    const serverStatus = mcpManager.getServerStatus();
+    
+    let listMessage = `## MCP Server List\n\n`;
+    
+    if (serverStatus.length === 0) {
+      listMessage += `📭 **No MCP servers configured**\n\n`;
+      listMessage += `To add a server, use:\n`;
+      listMessage += `\`\`\`bash\n`;
+      listMessage += `exa mcp add <name> <command...>\n`;
+      listMessage += `\`\`\`\n`;
+    } else {
+      const connectedServers = serverStatus.filter(s => s.connected).length;
+      const totalTools = serverStatus.reduce((sum, s) => sum + s.toolCount, 0);
+      
+      listMessage += `📋 **${serverStatus.length} server(s) configured** (${connectedServers} connected, ${totalTools} tools)\n\n`;
+      
+      for (const server of serverStatus) {
+        const statusIcon = server.connected ? '🟢' : '🔴';
+        const statusText = server.connected ? 'Connected' : 'Disconnected';
+        
+        listMessage += `${statusIcon} **${server.name}** - ${statusText} (${server.toolCount} tools)\n`;
+        listMessage += `   Transport: ${server.config.transport}`;
+        
+        if (server.config.command) {
+          listMessage += `, Command: ${server.config.command.join(' ')}`;
+        }
+        if (server.config.url) {
+          listMessage += `, URL: ${server.config.url}`;
+        }
+        
+        listMessage += `\n`;
+        
+        if (!server.connected && server.lastError) {
+          listMessage += `   ❌ Error: ${server.lastError}\n`;
+        }
+        
+        listMessage += `\n`;
+      }
+    }
+
+    addMessage({
+      role: 'system',
+      content: listMessage
+    });
+  } catch (error) {
+    addMessage({
+      role: 'system',
+      content: `❌ Error retrieving MCP server list: ${error instanceof Error ? error.message : String(error)}`
     });
   }
 }
@@ -389,6 +448,7 @@ function showMCPHelp(addMessage: (message: any) => void): void {
     
     `**Available Subcommands:**\n` +
     `- \`/mcp\` or \`/mcp status\` - Show general MCP status\n` +
+    `- \`/mcp list\` - List configured MCP servers\n` +
     `- \`/mcp tools\` - List all available MCP tools\n` +
     `- \`/mcp servers\` - Show detailed server information\n` +
     `- \`/mcp health\` - Show health status and diagnostics\n` +
