@@ -5,6 +5,7 @@ import { promisify } from 'util';
 import { writeFile, createDirectory, displayTree } from '../utils/file-ops.js';
 import { setReadFilesTracker, validateWebFetchParameters, validateWebSearchParameters } from './validators.js';
 import { secureHttpFetch, processHtmlToMarkdown, getWebConfig, webSearch as webSearchUtil } from './web-utils.js';
+import { isMCPTool, executeMCPTool } from '../mcp/tools-integration.js';
 
 const execAsync = promisify(exec);
 
@@ -976,6 +977,11 @@ export const TOOL_REGISTRY = {
  * Execute a tool by name with given arguments
  */
 export async function executeTool(toolName: string, toolArgs: Record<string, any>): Promise<ToolResult> {
+  // Check if this is an MCP tool first
+  if (isMCPTool(toolName)) {
+    return await executeMCPTool(toolName, toolArgs);
+  }
+
   if (!(toolName in TOOL_REGISTRY)) {
     return createToolResponse(false, undefined, '', 'Error: Unknown tool');
   }
