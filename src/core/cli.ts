@@ -5,6 +5,7 @@ import { render } from 'ink';
 import React from 'react';
 import { Agent } from './agent.js';
 import App from '../ui/App.js';
+import { createMCPCommand } from './mcp-commands.js';
 
 const program = new Command();
 
@@ -85,5 +86,8 @@ program
       options.proxy
     );
   });
+
+// Add MCP subcommand
+program.addCommand(createMCPCommand());
 
 program.parse();
