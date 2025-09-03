@@ -548,7 +548,109 @@ export interface SearchResponse {
 }
 
 /**
- * DuckDuckGo search implementation (primary, no API key required)
+ * SerpApi search implementation (highest priority, requires API key)
+ */
+async function searchSerpApi(query: string, maxResults: number = 10): Promise<SearchResponse> {
+  const apiKey = process.env.EXA_SERP_API_KEY;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'SerpApi',
+      error: 'SerpApi API key not configured',
+    };
+  }
+
+  try {
+    const response = await axios.get(SEARCH_PROVIDERS.serpapi.baseUrl, {
+      params: {
+        api_key: apiKey,
+        q: query,
+        engine: 'google',
+        num: Math.min(maxResults, 100), // SerpApi allows up to 100 results
+        hl: 'ja', // 日本語優先
+        gl: 'jp', // 日本地域
+      },
+      timeout: WEB_CONFIG.REQUEST_TIMEOUT,
+      headers: {
+        'User-Agent': WEB_CONFIG.USER_AGENT,
+      },
+    });
+
+    const data: SerpApiResponse = response.data;
+    const results: SearchResult[] = [];
+
+    // エラーチェック
+    if (data.error) {
+      return {
+        success: false,
+        results: [],
+        query,
+        provider: 'SerpApi',
+        error: `SerpApi error: ${data.error}`,
+      };
+    }
+
+    // ステータスチェック
+    if (data.search_metadata?.status !== 'Success') {
+      return {
+        success: false,
+        results: [],
+        query,
+        provider: 'SerpApi',
+        error: `SerpApi search status: ${data.search_metadata?.status}`,
+      };
+    }
+
+    // organic_resultsを変換
+    if (data.organic_results && Array.isArray(data.organic_results)) {
+      for (const item of data.organic_results.slice(0, maxResults)) {
+        if (item.title && item.link) {
+          results.push({
+            title: item.title,
+            url: item.link,
+            snippet: item.snippet || '',
+            displayUrl: item.displayed_link || item.link,
+          });
+        }
+      }
+    }
+
+    return {
+      success: true,
+      results,
+      query,
+      provider: 'SerpApi',
+      totalResults: data.search_information?.total_results || results.length,
+    };
+
+  } catch (error: any) {
+    let errorMessage = 'SerpApi search failed';
+    
+    if (error.response?.status === 401) {
+      errorMessage = 'SerpApi authentication failed: Invalid API key';
+    } else if (error.response?.status === 429) {
+      errorMessage = 'SerpApi rate limit exceeded';
+    } else if (error.response?.data?.error) {
+      errorMessage = `SerpApi error: ${error.response.data.error}`;
+    } else if (error.message) {
+      errorMessage = `SerpApi search failed: ${error.message}`;
+    }
+
+    return {
+      success: false,
+      results: [],
+      query,
+      provider: 'SerpApi',
+      error: errorMessage,
+    };
+  }
+}
+
+/**
+ * DuckDuckGo search implementation (fallback, no API key required)
  */
 async function searchDuckDuckGo(query: string, maxResults: number = 10): Promise<SearchResponse> {
   try {
