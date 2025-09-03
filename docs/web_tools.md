@@ -11,6 +11,13 @@ EXA Code CLIは、リアルタイムでWeb上の情報にアクセスできる2�
 
 ## 利用可能な検索プロバイダー
 
+### SerpApi（最高精度・推奨）
+- **料金**: 月250回まで無料、有料プランは$75/月〜
+- **設定**: APIキーが必要
+- **特徴**: Googleの高精度検索結果、最大100件/回取得可能
+- **制限**: 無料プランは月250回まで
+- **優先度**: 🥇 **最優先プロバイダー**（設定済みの場合）
+
 ### DuckDuckGo（無料・設定不要）
 - **料金**: 無料
 - **設定**: APIキー不要
@@ -30,6 +37,54 @@ EXA Code CLIは、リアルタイムでWeb上の情報にアクセスできる2�
 - **制限**: 1回のリクエストで最大50件まで
 
 ## 初期設定
+
+### SerpApi設定（推奨）
+
+#### ステップ1: SerpApiアカウント作成
+
+1. **SerpApi公式サイト**（https://serpapi.com/）にアクセス
+2. 右上の「**Sign Up**」をクリック
+3. **アカウント情報**を入力:
+   - Email address
+   - Password
+   - First Name / Last Name
+4. 「**Create Account**」をクリック
+
+#### ステップ2: APIキー取得
+
+5. ログイン後、**Dashboard**にアクセス
+6. 左側メニューの「**API Key**」をクリック
+7. **Private API Key**をコピー
+   - 形式例: `1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t`
+   - ⚠️ **重要**: このキーは秘匿情報です。他人と共有しないでください
+
+#### ステップ3: 環境変数設定
+
+```bash
+# SerpApi APIキーを設定
+export EXA_SERP_API_KEY="your_serpapi_key_here"
+
+# 実際の例（ダミーキー）
+export EXA_SERP_API_KEY="1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t"
+```
+
+#### 設定確認
+
+```bash
+# 設定値を確認
+echo $EXA_SERP_API_KEY
+
+# 正しく設定されていれば、APIキーが表示される
+```
+
+#### 料金プラン
+
+| プラン | 料金 | 検索回数 | 特徴 |
+|--------|------|----------|------|
+| **Free** | $0/月 | 250回/月 | 個人利用・テスト用 |
+| **Developer** | $75/月 | 5,000回/月 | 小規模開発 |
+| **Production** | $150/月 | 15,000回/月 | 本格運用 |
+| **Big Data** | $275/月 | 30,000回/月 | 大量データ処理 |
 
 ### Google Custom Search API設定
 
@@ -139,17 +194,19 @@ WebSearchツールは以下のパラメータを受け付けます：
 
 **search_provider オプション**:
 - `auto`: 設定済みプロバイダーを自動選択（デフォルト）
-- `duckduckgo`: DuckDuckGoを使用
+- `serpapi`: SerpApiを使用（推奨）
 - `google`: Google Custom Searchを使用
 - `bing`: Bing Web Searchを使用
+- `duckduckgo`: DuckDuckGoを使用
 
 ### プロバイダー選択ロジック
 
-#### 自動選択（推奨）
+#### 自動選択（推奨）- SerpApi最優先
 ```
-Google → Bing → DuckDuckGo
+🥇 SerpApi → Google → Bing → DuckDuckGo
 ```
 設定されているプロバイダーから順番に試行し、最終的にDuckDuckGoで確実に実行されます。
+**SerpApiが設定済みの場合は最優先で使用されます。**
 
 #### 手動指定
 特定のプロバイダーを指定することも可能ですが、通常は自動選択が最適です。
@@ -201,6 +258,30 @@ WebFetchツールは以下のパラメータを受け付けます：
 
 ## 実用的な使用例
 
+### SerpApi特化使用例（推奨）
+
+#### 高精度技術調査
+```bash
+# 環境変数設定済みの場合、自動的にSerpApiが使用される
+「React 18の新機能Concurrent Renderingの実装方法を教えて」
+→ SerpApiで最新かつ正確な技術情報を検索・分析
+```
+
+#### 特定プロバイダー指定
+```bash
+「OpenAI GPT-4の最新APIドキュメントを見つけて」
+→ 明示的にSerpApiを指定して高品質な検索結果を取得
+```
+
+#### 大量データ検索
+```bash
+# SerpApiは最大100件/回の結果取得が可能
+「JavaScript フレームワーク 比較 2024年版」
+→ より多くの検索結果から包括的な情報を収集
+```
+
+### 一般的な使用例
+
 ### 技術調査
 ```
 「Next.js 14の新機能について最新情報を教えて」
@@ -249,7 +330,8 @@ WebFetchツールは以下のパラメータを受け付けます：
 ### 環境変数による設定
 
 ```bash
-# 検索プロバイダー設定
+# 検索プロバイダー設定（優先順位順）
+export EXA_SERP_API_KEY="your_serpapi_key"              # 🥇 最優先
 export EXA_GOOGLE_SEARCH_API_KEY="your_google_api_key"
 export EXA_GOOGLE_SEARCH_ENGINE_ID="your_search_engine_id"
 export EXA_BING_SEARCH_API_KEY="your_bing_api_key"
@@ -280,7 +362,35 @@ export EXA_SEARCH_FALLBACK_STRATEGY="strict"
 
 ### よくある問題と解決方法
 
-#### 1. 「API key not configured」または「Search Engine ID not configured」エラー
+#### 0. SerpApi関連のエラー
+
+**症状**: SerpApi検索時に設定エラー
+**エラーメッセージ例**:
+- `SerpApi API key not configured`
+- `SerpApi authentication failed: Invalid API key`
+- `SerpApi rate limit exceeded`
+
+**解決方法**:
+```bash
+# 現在の設定を確認
+echo "SerpApi Key: $EXA_SERP_API_KEY"
+
+# 正しいAPIキーで再設定
+export EXA_SERP_API_KEY="1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t"
+
+# SerpApiダッシュボードでキーを確認
+# https://serpapi.com/manage-api-key
+```
+
+**よくあるSerpApiエラー**:
+- ❌ **Invalid API key**: APIキーが間違っている
+  - 解決: SerpApiダッシュボードで正しいキーを確認
+- ❌ **Rate limit exceeded**: 無料プランの月250回制限に達した
+  - 解決: 使用量を確認し、必要に応じて有料プランに変更
+- ❌ **Authentication failed**: APIキーが無効または期限切れ
+  - 解決: 新しいAPIキーを生成して設定
+
+#### 1. Google「API key not configured」または「Search Engine ID not configured」エラー
 **症状**: Google検索時に設定エラー
 **エラーメッセージ例**:
 - `Google Search API key or Search Engine ID not configured`
@@ -343,13 +453,21 @@ DuckDuckGo search successful with 5 results
 
 ### 無料利用枠
 
-| プロバイダー | 無料枠 | 制限 |
-|-------------|--------|------|
-| DuckDuckGo | 無制限 | 基本機能のみ |
-| Google Custom Search | 100回/日 | 高精度検索 |
-| Bing Web Search | 1000回/月 | 高品質検索 |
+| プロバイダー | 無料枠 | 制限 | 優先度 |
+|-------------|--------|------|-------|
+| **SerpApi** | 250回/月 | 高精度検索（最大100件/回） | 🥇 **最優先** |
+| Google Custom Search | 100回/日 | 高精度検索（最大10件/回） | 2位 |
+| Bing Web Search | 1000回/月 | 高品質検索（最大50件/回） | 3位 |
+| DuckDuckGo | 無制限 | 基本機能のみ | フォールバック |
 
 ### 課金について
+
+#### SerpApi（推奨）
+- **Free**: $0/月 - 250回/月
+- **Developer**: $75/月 - 5,000回/月
+- **Production**: $150/月 - 15,000回/月
+- **Big Data**: $275/月 - 30,000回/月
+- 詳細は SerpApi Pricing を確認
 
 #### Google Custom Search
 - 1000回まで $5/1000回
@@ -363,10 +481,13 @@ DuckDuckGo search successful with 5 results
 
 ### 効率的な使用方法
 
-1. **最初はDuckDuckGoで十分**: 基本的な検索には無料のDuckDuckGoを活用
-2. **高精度が必要な場合はGoogle/Bing**: 専門的な技術情報や最新情報が必要な場合
-3. **複数プロバイダーの設定**: フォールバック機能で可用性を向上
+1. **SerpApiを最優先に設定**: 高精度・高品質な検索結果のためAPIキーを設定
+2. **無料枠を活用**: SerpApi月250回 + Google日100回 + Bing月1000回の組み合わせ
+3. **フォールバック機能**: 複数プロバイダー設定で可用性を向上
 4. **適切なクエリ**: 具体的で明確な検索クエリを使用
+5. **コスト最適化**: 
+   - 基本検索: 無料のDuckDuckGoで十分
+   - 高精度検索: SerpApi（推奨）→ Google → Bing → DuckDuckGo
 
 ### セキュリティのベストプラクティス
 
