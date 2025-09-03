@@ -889,14 +889,15 @@ export async function webSearch(
   const clampedMaxResults = Math.max(1, Math.min(maxResults, 20)); // Limit between 1-20
 
   // 候補プロバイダー組み立て
+  const serpApiOK = isSerpApiConfigured();
   const googleOK = isGoogleConfigured();
   const bingOK = isBingConfigured();
 
   let providers: string[] = [];
   if (preferredProvider && preferredProvider !== 'auto' && SEARCH_PROVIDERS[preferredProvider]) {
     if (fallbackStrategy === 'strict') {
-      const needsKey = preferredProvider === 'google' || preferredProvider === 'bing';
-      const configured = preferredProvider === 'google' ? googleOK : preferredProvider === 'bing' ? bingOK : true;
+      const needsKey = preferredProvider === 'serpapi' || preferredProvider === 'google' || preferredProvider === 'bing';
+      const configured = preferredProvider === 'serpapi' ? serpApiOK : preferredProvider === 'google' ? googleOK : preferredProvider === 'bing' ? bingOK : true;
       if (needsKey && !configured) {
         return {
           success: false,
@@ -909,10 +910,11 @@ export async function webSearch(
       }
       providers = [preferredProvider];
     } else {
-      const base = [preferredProvider, 'google', 'bing', 'duckduckgo'];
+      const base = [preferredProvider, 'serpapi', 'google', 'bing', 'duckduckgo'];
       const seen = new Set<string>();
       for (const p of base) {
         if (!SEARCH_PROVIDERS[p] || seen.has(p)) continue;
+        if (p === 'serpapi' && !serpApiOK) continue;
         if (p === 'google' && !googleOK) continue;
         if (p === 'bing' && !bingOK) continue;
         seen.add(p);
@@ -921,9 +923,10 @@ export async function webSearch(
       if (!providers.includes('duckduckgo')) providers.push('duckduckgo');
     }
   } else {
-    if (googleOK || bingOK) {
-      const base = ['google', 'bing', 'duckduckgo'];
-      providers = base.filter(p => p === 'duckduckgo' || (p === 'google' ? googleOK : p === 'bing' ? bingOK : true));
+    // 自動選択: SerpApi最優先
+    if (serpApiOK || googleOK || bingOK) {
+      const base = ['serpapi', 'google', 'bing', 'duckduckgo'];
+      providers = base.filter(p => p === 'duckduckgo' || (p === 'serpapi' ? serpApiOK : p === 'google' ? googleOK : p === 'bing' ? bingOK : true));
     } else {
       providers = ['duckduckgo'];
     }
@@ -940,6 +943,9 @@ export async function webSearch(
     try {
       let searchResult: SearchResponse;
       switch (providerName) {
+        case 'serpapi':
+          searchResult = await searchSerpApi(trimmedQuery, clampedMaxResults);
+          break;
         case 'google':
           searchResult = await searchGoogle(trimmedQuery, clampedMaxResults);
           break;
