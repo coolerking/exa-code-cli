@@ -24,6 +24,14 @@ const PROVIDER_CONFIGS: ProviderInfo[] = [
     ]
   },
   {
+    id: 'google',
+    name: 'Google Gemini',
+    description: 'Get your API key from https://aistudio.google.com/app/apikey',
+    fields: [
+      { key: 'apiKey', label: 'API Key', placeholder: 'AIza...', required: true }
+    ]
+  },
+  {
     id: 'openai',
     name: 'OpenAI API',
     description: 'Get your API key from https://platform.openai.com/api-keys',

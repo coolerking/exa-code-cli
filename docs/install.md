@@ -21,6 +21,7 @@ EXA Code CLIは、様々なAIプロバイダーをサポートするコード生
      - AWS Bedrock
      - OpenRouter
      - Ollama（ローカル実行）
+     - Google Gemini
 
 ## インストール手順
 
@@ -121,6 +122,12 @@ echo 'export OLLAMA_ENDPOINT="http://localhost:11434"' >> ~/.bashrc
 ```
 
 **注意**: Ollamaを使用する場合は、事前にOllamaサーバーを起動しておく必要があります。
+
+#### Google Gemini
+
+```bash
+echo 'export GOOGLE_API_KEY="your_google_gemini_api_key"' >> ~/.bashrc
+```
 
 ### 4. 環境変数の反映
 

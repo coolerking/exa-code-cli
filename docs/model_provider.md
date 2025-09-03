@@ -41,6 +41,11 @@ EXA Code CLIは複数のAIモデルプロバイダーに対応しており、用
 - **料金**: 従量課金制
 - **デフォルトモデル**: Claude Sonnet 4 (Bedrock)
 
+### 8. Google Gemini (`google`)
+- **特徴**: Google の最新Geminiモデルを利用
+- **料金**: 従量課金制
+- **デフォルトモデル**: Gemini 2.5 Flash
+
 ## 初期設定方法
 
 ### プロバイダー認証情報の設定
@@ -58,6 +63,7 @@ EXA Code CLIは複数のAIモデルプロバイダーに対応しており、用
 /login groq
 /login openai
 /login azure
+/login google
 ```
 
 ### プロバイダー別設定項目
@@ -86,6 +92,9 @@ EXA Code CLIは複数のAIモデルプロバイダーに対応しており、用
 #### AWS Bedrock
 - **リージョン**: AWSリージョン（例: `us-east-1`）
 - **AWSクレデンシャル**: 環境変数またはAWSプロファイルで設定
+
+#### Google Gemini
+- **APIキー**: Google AI Studio で取得（https://aistudio.google.com/app/apikey）
 
 ## モデル選択・変更方法
 
@@ -137,6 +146,10 @@ EXA Code CLIは複数のAIモデルプロバイダーに対応しており、用
 #### AWS Bedrock
 - **Claude Opus 4.1 (Bedrock)**: AWS Bedrock経由 - 最高性能モデル
 - **Claude Sonnet 4 (Bedrock)**: AWS Bedrock経由 - バランス型モデル（デフォルト）
+
+#### Google Gemini
+- **Gemini 2.5 Pro**: Google の最新高性能モデル
+- **Gemini 2.5 Flash**: 低レイテンシ・高コスパモデル（デフォルト）
 
 ## 設定の管理
 
@@ -245,3 +258,5 @@ npm install openai
 ---
 
 このマニュアルは現在の実装に基づいています。新しいプロバイダーやモデルの追加、機能変更がある場合は随時更新されます。
+# Google Gemini
+export GOOGLE_API_KEY="your_api_key"

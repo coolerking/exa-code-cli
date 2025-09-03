@@ -1,6 +1,6 @@
 import { IProvider } from './base.js';
 
-export type ProviderType = 'groq' | 'openai' | 'azure' | 'openrouter' | 'ollama' | 'anthropic' | 'aws-bedrock';
+export type ProviderType = 'groq' | 'openai' | 'azure' | 'openrouter' | 'ollama' | 'anthropic' | 'aws-bedrock' | 'google';
 
 export class ProviderFactory {
   private static providers: Map<ProviderType, () => Promise<IProvider>> = new Map();
@@ -137,5 +137,11 @@ export async function registerAllProviders(): Promise<void> {
   ProviderFactory.registerProvider('aws-bedrock', async () => {
     const { AWSBedrockProvider } = await import('./aws-bedrock.js');
     return new AWSBedrockProvider();
+  });
+
+  // Google Gemini provider
+  ProviderFactory.registerProvider('google', async () => {
+    const { GoogleGeminiProvider } = await import('./google.js');
+    return new GoogleGeminiProvider();
   });
 }

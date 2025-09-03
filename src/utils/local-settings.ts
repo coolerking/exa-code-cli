@@ -47,6 +47,7 @@ interface Config {
     openrouter?: ProviderConfig;
     ollama?: ProviderConfig;
     'aws-bedrock'?: ProviderConfig;
+    google?: ProviderConfig;
   };
   
   // MCP configuration
@@ -354,6 +355,12 @@ export class ConfigManager {
         apiKey: 'AWS_ACCESS_KEY_ID',
         endpoint: 'AWS_REGION',
         deploymentName: 'AWS_SECRET_ACCESS_KEY',
+        apiVersion: ''
+      },
+      google: {
+        apiKey: 'GOOGLE_API_KEY',
+        endpoint: '',
+        deploymentName: '',
         apiVersion: ''
       }
     };
