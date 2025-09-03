@@ -46,6 +46,11 @@ export const PROVIDER_MODELS = {
     { id: 'anthropic.claude-opus-4-1-v1', name: 'Claude Opus 4.1 (Bedrock)', description: 'AWS Bedrock経由 - 最高性能モデル' },
     { id: 'anthropic.claude-sonnet-4-v1', name: 'Claude Sonnet 4 (Bedrock)', description: 'AWS Bedrock経由 - バランス型モデル（デフォルト）' },
   ] as ModelInfo[],
+
+  google: [
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Google の最新高性能モデル' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: '低レイテンシ・高コスパモデル' },
+  ] as ModelInfo[],
 } as const;
 
 // Default models for each provider
@@ -57,4 +62,5 @@ export const DEFAULT_MODELS = {
   ollama: 'gemma3:270m',
   anthropic: 'claude-sonnet-4-20250514',
   'aws-bedrock': 'anthropic.claude-sonnet-4-v1',
+  google: 'gemini-2.5-flash',
 } as const;
