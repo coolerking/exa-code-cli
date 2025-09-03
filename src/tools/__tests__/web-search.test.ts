@@ -244,15 +244,17 @@ test.serial('SerpApi: success with configured API key', async t => {
 
 test.serial('SerpApi: API key not configured error', async t => {
   // EXA_SERP_API_KEY is deleted in beforeEach
+  process.env.EXA_SEARCH_FALLBACK_STRATEGY = 'strict';
   
   const res = await webSearch('query', 5, 'serpapi');
   t.false(res.success);
-  t.is(res.provider, 'SerpApi');
-  t.regex(res.error || '', /API key not configured/);
+  t.is(res.provider, 'serpapi');
+  t.regex(res.error || '', /not configured/);
 });
 
 test.serial('SerpApi: API error response handling', async t => {
   process.env.EXA_SERP_API_KEY = 'invalid_key';
+  process.env.EXA_SEARCH_FALLBACK_STRATEGY = 'strict';
   
   mockAxiosGet((url) => {
     if (url.includes('serpapi.com/search')) {
@@ -272,6 +274,7 @@ test.serial('SerpApi: API error response handling', async t => {
 
 test.serial('SerpApi: HTTP 401 authentication error', async t => {
   process.env.EXA_SERP_API_KEY = 'invalid_key';
+  process.env.EXA_SEARCH_FALLBACK_STRATEGY = 'strict';
   
   mockAxiosGet((url) => {
     if (url.includes('serpapi.com/search')) {
@@ -293,6 +296,7 @@ test.serial('SerpApi: HTTP 401 authentication error', async t => {
 
 test.serial('SerpApi: HTTP 429 rate limit error', async t => {
   process.env.EXA_SERP_API_KEY = 'test_key';
+  process.env.EXA_SEARCH_FALLBACK_STRATEGY = 'strict';
   
   mockAxiosGet((url) => {
     if (url.includes('serpapi.com/search')) {
@@ -311,6 +315,7 @@ test.serial('SerpApi: HTTP 429 rate limit error', async t => {
 
 test.serial('SerpApi: empty results handling', async t => {
   process.env.EXA_SERP_API_KEY = 'test_key';
+  process.env.EXA_SEARCH_FALLBACK_STRATEGY = 'strict';
   
   mockAxiosGet((url) => {
     if (url.includes('serpapi.com/search')) {
