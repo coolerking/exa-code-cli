@@ -451,10 +451,10 @@ export interface SearchProvider {
 }
 
 export const SEARCH_PROVIDERS: { [key: string]: SearchProvider } = {
-  duckduckgo: {
-    name: 'DuckDuckGo',
-    baseUrl: 'https://api.duckduckgo.com',
-    requiresApiKey: false,
+  serpapi: {
+    name: 'SerpApi',
+    baseUrl: 'https://serpapi.com/search',
+    requiresApiKey: true,
   },
   google: {
     name: 'Google Custom Search',
@@ -466,9 +466,18 @@ export const SEARCH_PROVIDERS: { [key: string]: SearchProvider } = {
     baseUrl: 'https://api.bing.microsoft.com/v7.0/search',
     requiresApiKey: true,
   },
+  duckduckgo: {
+    name: 'DuckDuckGo',
+    baseUrl: 'https://api.duckduckgo.com',
+    requiresApiKey: false,
+  },
 };
 
 // プロバイダー設定検出ヘルパー
+function isSerpApiConfigured(): boolean {
+  return Boolean(process.env.EXA_SERP_API_KEY);
+}
+
 function isGoogleConfigured(): boolean {
   return Boolean(process.env.EXA_GOOGLE_SEARCH_API_KEY && process.env.EXA_GOOGLE_SEARCH_ENGINE_ID);
 }
@@ -482,6 +491,49 @@ export interface SearchResult {
   url: string;
   snippet: string;
   displayUrl?: string;
+}
+
+// SerpApi専用のレスポンス型定義
+export interface SerpApiSearchResult {
+  position?: number;
+  title: string;
+  link: string;
+  displayed_link?: string;
+  snippet?: string;
+  date?: string;
+  cached_page_link?: string;
+  related_pages_link?: string;
+  block_position?: number;
+}
+
+export interface SerpApiResponse {
+  search_metadata: {
+    id: string;
+    status: string;
+    json_endpoint?: string;
+    created_at?: string;
+    processed_at?: string;
+    google_url?: string;
+    raw_html_file?: string;
+    total_time_taken?: number;
+  };
+  search_parameters: {
+    engine: string;
+    q: string;
+    google_domain?: string;
+    hl?: string;
+    gl?: string;
+    device?: string;
+  };
+  search_information?: {
+    organic_results_state: string;
+    query_displayed?: string;
+    total_results?: number;
+    time_taken_displayed?: number;
+    menu_items?: any[];
+  };
+  organic_results?: SerpApiSearchResult[];
+  error?: string;
 }
 
 export interface SearchResponse {
