@@ -33,16 +33,66 @@ EXA Code CLIは、リアルタイムでWeb上の情報にアクセスできる2�
 
 ### Google Custom Search API設定
 
-1. **Google Cloud Console**でプロジェクトを作成
+#### ステップ1: Google Cloud Console設定
+
+1. **Google Cloud Console**（https://console.cloud.google.com/）でプロジェクトを作成
 2. **Custom Search JSON API**を有効化
-3. **APIキー**を作成
-4. **Google Custom Search Engine**で検索エンジンを作成
-5. **検索エンジンID**を取得
+3. **APIキー**を作成（認証情報から作成）
+
+#### ステップ2: Custom Search Engine作成
+
+4. **Google Custom Search Engine**（https://cse.google.com/）にアクセス
+5. 「新しい検索エンジンを作成」をクリック
+6. **検索対象設定**:
+   - 「検索するサイト」に `*` を入力（全Web検索の場合）
+   - または特定のサイト（例: `*.stackoverflow.com`）を指定
+7. **検索エンジン名**を入力（例: "EXA Code CLI Search"）
+8. 「作成」ボタンをクリック
+
+#### ステップ3: 検索エンジンID取得
+
+9. 作成された検索エンジンの「管理」をクリック
+10. **基本情報**タブで「検索エンジンID」を確認・コピー
+
+#### 検索エンジンIDの形式
+
+**実際のIDの例**:
+```bash
+# 本番環境用の実際のID形式
+export EXA_GOOGLE_SEARCH_ENGINE_ID="017576662512468239146:omuauf_lfve"
+export EXA_GOOGLE_SEARCH_ENGINE_ID="004186512735833622953:szujxnlf2ja"
+export EXA_GOOGLE_SEARCH_ENGINE_ID="009217259823014548361:1234567890a"
+```
+
+**IDの構成**:
+- 形式: `{21桁の数字}:{英数字8-10文字}`
+- 長さ: 通常30-32文字
+- 例: `017576662512468239146:omuauf_lfve`
+
+#### 環境変数設定
 
 ```bash
-# 環境変数で設定
-export EXA_GOOGLE_SEARCH_API_KEY="your_google_api_key_here"
-export EXA_GOOGLE_SEARCH_ENGINE_ID="your_search_engine_id_here"
+# 実際の値で設定（例）
+export EXA_GOOGLE_SEARCH_API_KEY="AIzaSyBOTI22jXcv9GNUj5fVw-YFhWU23456789"
+export EXA_GOOGLE_SEARCH_ENGINE_ID="017576662512468239146:omuauf_lfve"
+```
+
+#### ⚠️ 重要な注意事項
+
+**テスト用の値について**:
+- コードテストで使用されている `"engine"` は**テスト専用**の値です
+- **本番環境では絶対に動作しません**
+- 必ずGoogle Custom Search Engineで作成した実際のIDを使用してください
+
+**設定確認**:
+```bash
+# 設定値を確認
+echo $EXA_GOOGLE_SEARCH_API_KEY
+echo $EXA_GOOGLE_SEARCH_ENGINE_ID
+
+# 正しく設定されていれば以下のような形式で表示される
+# AIzaSy... (APIキー)
+# 123456789012345678901:abcdefg (検索エンジンID)
 ```
 
 ### Bing Web Search API設定
@@ -230,18 +280,27 @@ export EXA_SEARCH_FALLBACK_STRATEGY="strict"
 
 ### よくある問題と解決方法
 
-#### 1. 「API key not configured」エラー
-**症状**: Google/Bing検索時にAPIキーエラー
+#### 1. 「API key not configured」または「Search Engine ID not configured」エラー
+**症状**: Google検索時に設定エラー
+**エラーメッセージ例**:
+- `Google Search API key or Search Engine ID not configured`
+- `API key not configured`
+
 **解決方法**:
 ```bash
-# 環境変数を確認
-echo $EXA_GOOGLE_SEARCH_API_KEY
-echo $EXA_GOOGLE_SEARCH_ENGINE_ID
-echo $EXA_BING_SEARCH_API_KEY
+# 現在の設定を確認
+echo "API Key: $EXA_GOOGLE_SEARCH_API_KEY"
+echo "Engine ID: $EXA_GOOGLE_SEARCH_ENGINE_ID"
 
-# 再設定
-export EXA_GOOGLE_SEARCH_API_KEY="correct_api_key"
+# 正しい値で再設定
+export EXA_GOOGLE_SEARCH_API_KEY="AIzaSyBOTI22jXcv9GNUj5fVw-YFhWU23456789"
+export EXA_GOOGLE_SEARCH_ENGINE_ID="017576662512468239146:omuauf_lfve"
 ```
+
+**よくある設定ミス**:
+- ❌ `export EXA_GOOGLE_SEARCH_ENGINE_ID="engine"` (テスト用の値)
+- ❌ `export EXA_GOOGLE_SEARCH_ENGINE_ID="your_search_engine_id_here"` (プレースホルダー)
+- ✅ `export EXA_GOOGLE_SEARCH_ENGINE_ID="017576662512468239146:omuauf_lfve"` (実際のID)
 
 #### 2. 「Rate limit exceeded」エラー
 **症状**: リクエスト制限に達した
