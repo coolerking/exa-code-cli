@@ -6,6 +6,7 @@ import React from 'react';
 import { Agent } from './agent.js';
 import App from '../ui/App.js';
 import { createMCPCommand } from './mcp-commands.js';
+import { formatModelsList, formatProvidersList } from '../providers/catalog.js';
 
 const program = new Command();
 
@@ -89,5 +90,26 @@ program
 
 // Add MCP subcommand
 program.addCommand(createMCPCommand());
+
+program
+  .command('providers')
+  .description('List available AI providers')
+  .action(async () => {
+    console.log(await formatProvidersList());
+    process.exit(0);
+  });
+
+program
+  .command('models [provider]')
+  .description('List available AI models (optionally filtered by provider)')
+  .action(async (provider?: string) => {
+    try {
+      console.log(await formatModelsList(provider));
+      process.exit(0);
+    } catch (error) {
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
+      process.exit(1);
+    }
+  });
 
 program.parse();
