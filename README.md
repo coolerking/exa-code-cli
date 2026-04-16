@@ -76,6 +76,19 @@ Exa Code CLI は、Groq CodeCLI v1.0.2 をベースに、以下のようなカ�
 
 停止は、 Ctrl+C です。
 
+- AIプロバイダー一覧を表示: `exa providers`
+- モデル一覧を表示（全プロバイダー）: `exa models`
+- モデル一覧を表示（特定プロバイダー）: `exa models openai`
+
+## AIプロバイダーとモデル
+
+Exa Code CLI は、実装で定義された内容から AI プロバイダー／モデル一覧を表示できます。
+
+- プロバイダー一覧: `exa providers`
+- モデル一覧: `exa models [provider]`
+
+一覧はコード上の定義（`src/providers/models.ts` と各プロバイダー実装）を参照して生成されるため、ドキュメントと実装の乖離が起きにくい構成です。
+
 - [MCPクライアント利用マニュアル](./docs/mcp_client.md)
 - [WebSearch/WebFetchツール利用マニュアル](./docs/web_tools.md)
 - [モデルプロバイダー機能利用マニュアル](./docs/model_provider.md)
