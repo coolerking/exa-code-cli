@@ -107,7 +107,7 @@ program
       console.log(await formatModelsList(provider));
       process.exit(0);
     } catch (error) {
-      console.log(chalk.red(error instanceof Error ? error.message : String(error)));
+      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
       process.exit(1);
     }
   });

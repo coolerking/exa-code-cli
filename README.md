@@ -76,10 +76,6 @@ Exa Code CLI は、Groq CodeCLI v1.0.2 をベースに、以下のようなカ�
 
 停止は、 Ctrl+C です。
 
-- AIプロバイダー一覧を表示: `exa providers`
-- モデル一覧を表示（全プロバイダー）: `exa models`
-- モデル一覧を表示（特定プロバイダー）: `exa models openai`
-
 ## AIプロバイダーとモデル
 
 Exa Code CLI は、実装で定義された内容から AI プロバイダー／モデル一覧を表示できます。

@@ -1,6 +1,6 @@
 import test from 'ava';
 import { formatModelsList, formatProvidersList, getProviderCatalog } from '../catalog.js';
-import { PROVIDER_MODELS } from '../models.js';
+import { DEFAULT_MODELS, PROVIDER_MODELS } from '../models.js';
 
 test('getProviderCatalog includes all configured providers', async t => {
   const catalog = await getProviderCatalog();
@@ -30,4 +30,14 @@ test('formatModelsList throws for unknown provider', async t => {
   await t.throwsAsync(formatModelsList('invalid-provider'), {
     message: /Unknown provider: invalid-provider/,
   });
+});
+
+test('default model exists in each provider model list', t => {
+  for (const providerId of Object.keys(PROVIDER_MODELS) as Array<keyof typeof PROVIDER_MODELS>) {
+    const modelIds = PROVIDER_MODELS[providerId].map(model => model.id);
+    t.true(
+      modelIds.includes(DEFAULT_MODELS[providerId]),
+      `Default model for ${providerId} should exist in PROVIDER_MODELS`
+    );
+  }
 });

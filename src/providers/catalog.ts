@@ -48,8 +48,9 @@ export async function formatModelsList(providerFilter?: string): Promise<string>
 
   if (filteredCatalog.length === 0) {
     const availableProviders = catalog.map(provider => provider.id).join(', ');
+    const unknownProvider = normalizedFilter ?? providerFilter;
     throw new Error(
-      `Unknown provider: ${providerFilter}. Available providers: ${availableProviders}`
+      `Unknown provider: ${unknownProvider}. Available providers: ${availableProviders}`
     );
   }
 
